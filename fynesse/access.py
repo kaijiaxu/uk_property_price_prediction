@@ -214,9 +214,10 @@ def join_one_alphabet(alphabet):
         "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
         f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE `postcode` LIKE '{alphabet}%') pp_data_temp",
         "INNER JOIN",
-        "(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `postcode` LIKE '{alphabet}%') postcode_data_temp",
+        f"(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `postcode` LIKE '{alphabet}%') postcode_data_temp",
         "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
     join_query = " ".join(join_query)
+    print(join_query)
     results = run_query_return_results(join_query)
     fp = open(f'joined-{alphabet}.csv', 'w')
     myFile = csv.writer(fp)
