@@ -101,9 +101,8 @@ def create_pp_data():
     """
     Create the schema for pp_data, including adding db_id.
     """
-    schema = ["DROP TABLE IF EXISTS `pp_data`;",    
-            "CREATE TABLE IF NOT EXISTS `pp_data` (",
-            "`transaction_unique_identifier` tinytext COLLATE utf8_bin NOT NULL,",
+    schema = ["CREATE TABLE IF NOT EXISTS `pp_data`",
+            "(`transaction_unique_identifier` tinytext COLLATE utf8_bin NOT NULL,",
             "`price` int(10) unsigned NOT NULL,",
             "`date_of_transfer` date NOT NULL,",
             "`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
@@ -119,21 +118,21 @@ def create_pp_data():
             "`county` tinytext COLLATE utf8_bin NOT NULL,",
             "`ppd_category_type` varchar(2) COLLATE utf8_bin NOT NULL,",
             "`record_status` varchar(2) COLLATE utf8_bin NOT NULL,",
-            "`db_id` bigint(20) unsigned NOT NULL"
-            ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;",
-            "ALTER TABLE `pp_data` ADD PRIMARY KEY (`db_id`);",
-            "ALTER TABLE `pp_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;"]
+            "`db_id` bigint(20) unsigned NOT NULL)"
+            "DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;"]
     schema = " ".join(schema)
+    run_query("DROP TABLE IF EXISTS `pp_data`;")
     run_query(schema)
+    run_query("ALTER TABLE `pp_data` ADD PRIMARY KEY (`db_id`);")
+    run_query("ALTER TABLE `pp_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;")
 
 
 def create_postcode_data():
     """
     Create the schema for postcode_data, including adding db_id.
     """
-    schema = ["DROP TABLE IF EXISTS `postcode_data`;",
-              "CREATE TABLE IF NOT EXISTS `postcode_data` (",
-              "`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
+    schema = ["CREATE TABLE IF NOT EXISTS `postcode_data`",
+              "(`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
               "`status` enum('live','terminated') NOT NULL,",
               "`usertype` enum('small', 'large') NOT NULL,",
               "`easting` int unsigned,",
@@ -150,12 +149,13 @@ def create_postcode_data():
               "`postcode_sector` varchar(6) COLLATE utf8_bin NOT NULL,",
               "`outcode` varchar(4) COLLATE utf8_bin NOT NULL,",
               "`incode` varchar(3)  COLLATE utf8_bin NOT NULL,",
-              "`db_id` bigint(20) unsigned NOT NULL",
-              ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
-              "ALTER TABLE `postcode_data` ADD PRIMARY KEY (`db_id`);",
-              "ALTER TABLE `postcode_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;"]
+              "`db_id` bigint(20) unsigned NOT NULL)",
+              "DEFAULT CHARSET=utf8 COLLATE=utf8_bin;"]
     schema = " ".join(schema)
+    run_query("DROP TABLE IF EXISTS `postcode_data`;")
     run_query(schema)
+    run_query("ALTER TABLE `postcode_data` ADD PRIMARY KEY (`db_id`);")
+    run_query("ALTER TABLE `postcode_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;")
 
 
 def create_indices():
@@ -201,8 +201,30 @@ def join_one_year(year):
     myFile.writerows(results)
     fp.close()
     # df = pd.DataFrame(results)
-    # df.to_csv(f'joined-{year}.csv', index=False)
+    # df.to_csv(f'joined-{year}.csv', header=None, index=False)
     print(f'Successfully joined {year}\n')
+    return results
+
+def join_one_alphabet(alphabet):
+    """
+    Join by starting letter of postcode, save results into a csv
+    """
+    # For slightly better readability, join_query was separated:
+    join_query = [
+        "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
+        f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE `postcode` LIKE '{alphabet}%') pp_data_temp",
+        "INNER JOIN",
+        "(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `postcode` LIKE '{alphabet}%') postcode_data_temp",
+        "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
+    join_query = " ".join(join_query)
+    results = run_query_return_results(join_query)
+    fp = open(f'joined-{alphabet}.csv', 'w')
+    myFile = csv.writer(fp)
+    myFile.writerows(results)
+    fp.close()
+    # df = pd.DataFrame(results)
+    # df.to_csv(f'joined-{year}.csv', header=None, index=False)
+    print(f'Successfully joined {alphabet}\n')
     return results
 
 
@@ -215,8 +237,7 @@ def create_prices_coordinates_data():
     """
     Create the schema for prices_coordinates_data.
     """
-    schema = ["DROP TABLE IF EXISTS `prices_coordinates_data`;",
-              "CREATE TABLE IF NOT EXISTS `prices_coordinates_data`",
+    schema = ["CREATE TABLE IF NOT EXISTS `prices_coordinates_data`",
               "(`price` int(10) unsigned NOT NULL,",
               "`date_of_transfer` date NOT NULL,",
               "`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
@@ -233,6 +254,7 @@ def create_prices_coordinates_data():
               "`db_id` bigint(20) unsigned NOT NULL)",
               "DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1 ;"]
     schema = " ".join(schema)
+    run_query("DROP TABLE IF EXISTS `prices_coordinates_data`;")
     run_query(schema)
 
 def load_data(filename, tablename):
