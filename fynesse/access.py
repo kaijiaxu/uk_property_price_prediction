@@ -4,6 +4,7 @@ from ipywidgets import interact_manual, Text, Password
 import pymysql
 import urllib.request
 import pandas as pd
+import osmnx as ox
 
 """These are the types of import we might expect in this file
 import httplib2
@@ -210,18 +211,24 @@ def join_one_year(year):
     """
     Join by year, save results into a csv
     """
-    # For readability, join_query was separated:
-    join_query = ["SELECT * FROM",
-                  f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31') pp_data_temp",
-                  "INNER JOIN",
-                  "(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data`) postcode_data_temp",
-                  "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
+    # For slightly better readability, join_query was separated:
+    join_query = [
+        "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
+        f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31') pp_data_temp",
+        "INNER JOIN",
+        "(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data`) postcode_data_temp",
+        "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
     join_query = " ".join(join_query)
     results = run_query_return_results(join_query)
     df = pd.DataFrame(results)
     df.to_csv(f'joined-{year}.csv', index=False)
-    print('Successfully joined {year}\n')
+    print(f'Successfully joined {year}\n')
     return results
+
+
+def generate_joined_csvs(from_year, to_year):
+    for year in range(from_year, to_year + 1):
+        join_one_year(year)
 
 
 def create_prices_coordinates_data():
