@@ -5,6 +5,7 @@ import pymysql
 import urllib.request
 import pandas as pd
 import osmnx as ox
+import csv
 
 """These are the types of import we might expect in this file
 import httplib2
@@ -195,8 +196,12 @@ def join_one_year(year):
         "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
     join_query = " ".join(join_query)
     results = run_query_return_results(join_query)
-    df = pd.DataFrame(results)
-    df.to_csv(f'joined-{year}.csv', index=False)
+    fp = open(f'joined-{year}.csv', 'w')
+    myFile = csv.writer(fp)
+    myFile.writerows(results)
+    fp.close()
+    # df = pd.DataFrame(results)
+    # df.to_csv(f'joined-{year}.csv', index=False)
     print(f'Successfully joined {year}\n')
     return results
 
