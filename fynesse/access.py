@@ -61,7 +61,7 @@ def run_query(query):
         database_details = yaml.safe_load(file)
     username = credentials["username"]
     password = credentials["password"]
-    url = database_details["url"]
+    url = database_details["database"]
     conn = create_database_connection(user=username, password=password, host=url, database="property_prices")
     cur = conn.cursor()
     cur.execute(query)
