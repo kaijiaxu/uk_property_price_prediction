@@ -2,6 +2,7 @@ from .config import *
 import yaml
 from ipywidgets import interact_manual, Text, Password
 import pymysql
+import urllib.request
 
 """These are the types of import we might expect in this file
 import httplib2
@@ -67,3 +68,7 @@ def run_query(query):
     conn.commit()
     cur.close()
 
+def load_ppdata_csvs(from_year, to_year):
+    for year in range(from_year, to_year + 1):
+        for partnumber in range(1, 3):
+            urllib.request.urlretrieve('http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-{year}-part{partnumber}.csv'.format(year=year, partnumber=partnumber), 'pp-{year}-part{partnumber}.csv'.format(year=year, partnumber=partnumber))
