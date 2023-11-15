@@ -228,6 +228,27 @@ def join_one_alphabet(alphabet):
     print(f'Successfully joined {alphabet}\n')
     return results
 
+def join_on_the_fly(min_year, max_year, property_type, south, north, east, west):
+    """
+    Join by starting letter of postcode, save results into a csv
+    """
+    # For slightly better readability, join_query was separated:
+    join_query = [
+        "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
+        f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE `property_type` = '{property_type}' AND `date_of_transfer` >= '{min_year}' AND `date_of_transfer` <= '{max_year}') pp_data_temp",
+        "INNER JOIN",
+        f"(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `latitude` >= {south} AND `latitude` <= {north} AND `longitude` >= {west} AND `longitude` <= {east}) postcode_data_temp",
+        "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
+    join_query = " ".join(join_query)
+    print(join_query)
+    results = run_query_return_results(join_query)
+    fp = open(f'joined-on-the-fly.csv', 'w')
+    myFile = csv.writer(fp)
+    myFile.writerows(results)
+    fp.close()
+    print(f'Successfully joined on the fly\n')
+    return results
+
 
 def generate_joined_csvs(from_year, to_year):
     for year in range(from_year, to_year + 1):
