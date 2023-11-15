@@ -2,6 +2,11 @@ from .config import *
 
 from . import access
 
+import osmnx as ox
+import matplotlib.pyplot as plt
+import mlai
+import mlai.plot as plot
+
 """These are the types of import we might expect in this file
 import pandas
 import bokeh
@@ -22,9 +27,24 @@ def query(data):
     """Request user input for some aspect of the data."""
     raise NotImplementedError
 
-def view(data):
+def view(north, south, east, west, tags):
     """Provide a view of the data that allows the user to verify some aspect of its quality."""
-    raise NotImplementedError
+    graph = ox.graph_from_bbox(north, south, east, west)
+    # Retrieve nodes and edges
+    nodes, edges = ox.graph_to_gdfs(graph)
+    fig, ax = plt.subplots(figsize=plot.big_figsize)
+    # Plot street edges
+    edges.plot(ax=ax, linewidth=1, edgecolor="dimgray")
+    ax.set_xlim([west, east])
+    ax.set_ylim([south, north])
+    ax.set_xlabel("longitude")
+    ax.set_ylabel("latitude")
+
+    # Plot all POIs
+    pois = access.get_pois(north, south, east, west, tags)
+    pois.plot(ax=ax, color="blue", alpha=0.7, markersize=10)
+    plt.tight_layout()
+    mlai.write_figure(directory="./maps", filename="pois.jpg")
 
 def labelled(data):
     """Provide a labelled set of data ready for supervised learning."""

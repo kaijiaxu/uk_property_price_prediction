@@ -122,8 +122,8 @@ def create_pp_data():
             ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;",
             "ALTER TABLE `pp_data` ADD PRIMARY KEY (`db_id`);",
             "ALTER TABLE `pp_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;"]
-    for line in schema:
-        run_query(line)
+    schema = " ".join(schema)
+    run_query(schema)
 
 
 def create_postcode_data():
@@ -153,33 +153,8 @@ def create_postcode_data():
               ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
               "ALTER TABLE `postcode_data` ADD PRIMARY KEY (`db_id`);",
               "ALTER TABLE `postcode_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;"]
-    for line in schema:
-        run_query(line)
-
-
-def create_indices():
-    """
-    Index both the `pp_data` and `postcode_data` table.
-    I suspect only the ppdata_date_of_transfer, ppdata_postcode and postcodedata_postcode are needed, but I created indices for all fields in `prices_coordinates_data`.
-    """
-    query = [
-        "CREATE INDEX ppdata_price ON pp_data (price);",
-        "CREATE INDEX ppdata_date_of_transfer ON pp_data (date_of_transfer);",
-        "CREATE INDEX ppdata_property_type ON pp_data (property_type);",
-        "CREATE INDEX ppdata_new_build_flag ON pp_data (new_build_flag);",
-        "CREATE INDEX ppdata_tenure_type ON pp_data (tenure_type);",
-        "CREATE INDEX ppdata_locality ON pp_data (locality);",
-        "CREATE INDEX ppdata_town_city ON pp_data (town_city);",
-        "CREATE INDEX ppdata_district ON pp_data (district);",
-        "CREATE INDEX ppdata_county ON pp_data (county);",
-        "CREATE INDEX ppdata_postcode ON pp_data (postcode);",
-        "CREATE INDEX postcodedata_postcode ON postcode_data (postcode);",
-        "CREATE INDEX postcodedata_country ON postcode_data (country);",
-        "CREATE INDEX postcodedata_latitude ON postcode_data (latitude);",
-        "CREATE INDEX postcodedata_longitude ON postcode_data (longitude);"
-    ]
-    for line in query:
-        run_query(line)
+    schema = " ".join(schema)
+    run_query(schema)
 
 
 def create_indices():
@@ -252,8 +227,19 @@ def create_prices_coordinates_data():
               "`longitude` decimal(10,8) NOT NULL,",
               "`db_id` bigint(20) unsigned NOT NULL",
               ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1 ;"]
-    for line in schema:
-        run_query(line)
+    schema = " ".join(schema)
+    run_query(schema)
 
 def load_data(filename, tablename):
     run_query(f"""LOAD DATA LOCAL INFILE '{filename}' INTO TABLE `{tablename}` FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED by '"' LINES STARTING BY '' TERMINATED BY '\n';""")
+
+def get_pois(north, south, west, east, tags):
+  """Returns points of interest based on bounding box and tags"""
+  return ox.geometries_from_bbox(north, south, east, west, tags)
+
+def get_bounding_box(latitude, longitude, box_height, box_width):
+  north = latitude + box_height/2
+  south = latitude - box_height/2
+  west = longitude - box_width/2
+  east = longitude + box_width/2
+  return (north, south, west, east)
