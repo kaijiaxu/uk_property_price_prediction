@@ -216,7 +216,7 @@ def join_one_year(year):
                   "INNER JOIN",
                   "(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data`) postcode_data_temp",
                   "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
-    join_query = join_query.join(" ")
+    join_query = " ".join(join_query)
     results = run_query_return_results(join_query)
     df = pd.DataFrame(results)
     df.to_csv(f'joined-{year}.csv', index=False)
