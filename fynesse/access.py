@@ -216,8 +216,8 @@ def create_prices_coordinates_data():
     Create the schema for prices_coordinates_data.
     """
     schema = ["DROP TABLE IF EXISTS `prices_coordinates_data`;",
-              "CREATE TABLE IF NOT EXISTS `prices_coordinates_data` (",
-              "`price` int(10) unsigned NOT NULL,",
+              "CREATE TABLE IF NOT EXISTS `prices_coordinates_data`",
+              "(`price` int(10) unsigned NOT NULL,",
               "`date_of_transfer` date NOT NULL,",
               "`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
               "`property_type` varchar(1) COLLATE utf8_bin NOT NULL,",
@@ -230,8 +230,8 @@ def create_prices_coordinates_data():
               "`country` enum('England', 'Wales', 'Scotland', 'Northern Ireland', 'Channel Islands', 'Isle of Man') NOT NULL,",
               "`latitude` decimal(11,8) NOT NULL,",
               "`longitude` decimal(10,8) NOT NULL,",
-              "`db_id` bigint(20) unsigned NOT NULL",
-              ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1 ;"]
+              "`db_id` bigint(20) unsigned NOT NULL)",
+              "DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1 ;"]
     schema = " ".join(schema)
     run_query(schema)
 
