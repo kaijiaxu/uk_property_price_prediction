@@ -18,6 +18,9 @@ import sqlite"""
 
 """Place commands in this file to access the data electronically. Don't remove any missing values, or deal with outliers. Make sure you have legalities correct, both intellectual property and personal data privacy rights. Beyond the legal side also think about the ethical issues around this data. """
 
+
+### Database Connection ###
+
 def save_credentials():
     """ 
     Save credentials into a yaml file
@@ -54,13 +57,7 @@ def create_database_connection(user, password, host, database, port=3306):
         print(f"Error connecting to the MariaDB Server: {e}")
     return conn
 
-def load_ppdata_csvs(from_year, to_year):
-    """
-    Download Property Price Data 
-    """
-    for year in range(from_year, to_year + 1):
-        for partnumber in range(1, 3):
-            urllib.request.urlretrieve('http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-{year}-part{partnumber}.csv'.format(year=year, partnumber=partnumber), 'pp-{year}-part{partnumber}.csv'.format(year=year, partnumber=partnumber))
+### Database operations ###
 
 def run_query(query):
     """
@@ -97,6 +94,26 @@ def run_query_return_results(query):
     return rows
 
 
+def load_data(filename, tablename):
+    """
+    Load data from a csv file to a database table 
+    :param filename: name of csv file
+    :param tablename: name of database table
+    """
+    run_query(f"""LOAD DATA LOCAL INFILE '{filename}' INTO TABLE `{tablename}` FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED by '"' LINES STARTING BY '' TERMINATED BY '\n';""")
+
+
+### Price Paid Data ###
+
+def load_ppdata_csvs(from_year, to_year):
+    """
+    Download Property Price Data onto local machine
+    """
+    for year in range(from_year, to_year + 1):
+        for partnumber in range(1, 3):
+            urllib.request.urlretrieve('http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-{year}-part{partnumber}.csv'.format(year=year, partnumber=partnumber), 'pp-{year}-part{partnumber}.csv'.format(year=year, partnumber=partnumber))
+
+
 def create_pp_data():
     """
     Create the schema for pp_data, including adding db_id.
@@ -126,6 +143,8 @@ def create_pp_data():
     run_query("ALTER TABLE `pp_data` ADD PRIMARY KEY (`db_id`);")
     run_query("ALTER TABLE `pp_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;")
 
+
+### Postcode Data ###
 
 def create_postcode_data():
     """
@@ -158,6 +177,29 @@ def create_postcode_data():
     run_query("ALTER TABLE `postcode_data` MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;")
 
 
+### Option A: Join on the fly ###
+
+def join_on_the_fly(min_year, max_year, property_type, south, north, east, west):
+    """
+    Join by starting letter of postcode, save results into a csv
+    """
+    # For slightly better readability, join_query was separated:
+    join_query = [
+        "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
+        f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE `property_type` = '{property_type}' AND `date_of_transfer` >= '{min_year}' AND `date_of_transfer` <= '{max_year}') pp_data_temp",
+        "INNER JOIN",
+        f"(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `latitude` >= {south} AND `latitude` <= {north} AND `longitude` >= {west} AND `longitude` <= {east}) postcode_data_temp",
+        "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
+    join_query = " ".join(join_query)
+    print(join_query)
+    results = run_query_return_results(join_query)
+    df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
+    print(f'Successfully joined on the fly\n')
+    return df
+
+
+### Option B: Prices Coordinates Data ###
+
 def create_indices():
     """
     Index both the `pp_data` and `postcode_data` table.
@@ -174,7 +216,6 @@ def create_indices():
         "CREATE INDEX ppdata_district ON pp_data (district);",
         "CREATE INDEX ppdata_county ON pp_data (county);",
         "CREATE INDEX ppdata_postcode ON pp_data (postcode);",
-        "CREATE INDEX ppdata_date_postcode ON pp_data (date_of_transfer, postcode);",
         "CREATE INDEX postcodedata_postcode ON postcode_data (postcode);",
         "CREATE INDEX postcodedata_country ON postcode_data (country);",
         "CREATE INDEX postcodedata_latitude ON postcode_data (latitude);",
@@ -184,7 +225,7 @@ def create_indices():
         run_query(line)
 
 
-def join_one_year_concise(year):
+def join_one_year(year):
     """
     Join by year, save results into a csv
     """
@@ -199,81 +240,8 @@ def join_one_year_concise(year):
     myFile = csv.writer(fp)
     myFile.writerows(results)
     fp.close()
-    # df = pd.DataFrame(results)
-    # df.to_csv(f'joined-{year}.csv', header=None, index=False)
     print(f'Successfully joined {year}\n')
     return results
-
-
-def join_one_year(year):
-    """
-    Join by year, save results into a csv
-    """
-    # For slightly better readability, join_query was separated:
-    join_query = [
-        "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
-        f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31') pp_data_temp",
-        "INNER JOIN",
-        "(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data`) postcode_data_temp",
-        "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
-    join_query = " ".join(join_query)
-    results = run_query_return_results(join_query)
-    fp = open(f'joined-{year}.csv', 'w')
-    myFile = csv.writer(fp)
-    myFile.writerows(results)
-    fp.close()
-    # df = pd.DataFrame(results)
-    # df.to_csv(f'joined-{year}.csv', header=None, index=False)
-    print(f'Successfully joined {year}\n')
-    return results
-
-def join_one_alphabet(alphabet):
-    """
-    Join by starting letter of postcode, save results into a csv
-    """
-    # For slightly better readability, join_query was separated:
-    join_query = [
-       "SELECT pp_data.`price`, pp_data.`date_of_transfer`, pp_data.`postcode`, pp_data.`property_type`, pp_data.`new_build_flag`, pp_data.`tenure_type`, pp_data.`locality`, pp_data.`town_city`, pp_data.`district`, pp_data.`county`, postcode_data.`country`, postcode_data.`latitude`, postcode_data.`longitude`, pp_data.`db_id` FROM `pp_data` INNER JOIN `postcode_data`",
-        "ON pp_data.`postcode` = postcode_data.`postcode`",
-        f"WHERE pp_data.`postcode` LIKE '{alphabet}%'"]
-    join_query = " ".join(join_query)
-    print(join_query)
-    results = run_query_return_results(join_query)
-    fp = open(f'joined-{alphabet}.csv', 'w')
-    myFile = csv.writer(fp)
-    myFile.writerows(results)
-    fp.close()
-    # df = pd.DataFrame(results)
-    # df.to_csv(f'joined-{year}.csv', header=None, index=False)
-    print(f'Successfully joined {alphabet}\n')
-    return results
-
-def join_on_the_fly(min_year, max_year, property_type, south, north, east, west):
-    """
-    Join by starting letter of postcode, save results into a csv
-    """
-    # For slightly better readability, join_query was separated:
-    join_query = [
-        "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
-        f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE `property_type` = '{property_type}' AND `date_of_transfer` >= '{min_year}' AND `date_of_transfer` <= '{max_year}') pp_data_temp",
-        "INNER JOIN",
-        f"(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `latitude` >= {south} AND `latitude` <= {north} AND `longitude` >= {west} AND `longitude` <= {east}) postcode_data_temp",
-        "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
-    join_query = " ".join(join_query)
-    print(join_query)
-    results = run_query_return_results(join_query)
-    # fp = open(f'joined-on-the-fly.csv', 'w')
-    # myFile = csv.writer(fp)
-    # myFile.writerows(results)
-    # fp.close()
-    df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
-    print(f'Successfully joined on the fly\n')
-    return df
-
-
-def generate_joined_csvs(from_year, to_year):
-    for year in range(from_year, to_year + 1):
-        join_one_year(year)
 
 
 def create_prices_coordinates_data():
@@ -300,8 +268,8 @@ def create_prices_coordinates_data():
     run_query("DROP TABLE IF EXISTS `prices_coordinates_data`;")
     run_query(schema)
 
-def load_data(filename, tablename):
-    run_query(f"""LOAD DATA LOCAL INFILE '{filename}' INTO TABLE `{tablename}` FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED by '"' LINES STARTING BY '' TERMINATED BY '\n';""")
+
+### Open Street Map data ###
 
 def get_pois(north, south, east, west, tags):
   """Returns points of interest based on bounding box and tags"""
