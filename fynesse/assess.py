@@ -52,7 +52,7 @@ def data_validation_interaction():
             longitude=longitude_slider)
     
 
-def data_validation_plot():
+# def data_validation_plot():
 
 # def data():
 #     """Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame."""
