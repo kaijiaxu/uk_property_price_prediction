@@ -276,12 +276,29 @@ def get_prices_coordinates_df(north, south, east, west):
     return prices_coordinates_df
 
 
+def create_indices_prices_coordinates():
+    """
+    Index the prices_coordinates_data table.
+    """
+    query = [
+        "CREATE INDEX pc_latitude ON prices_coordinates_data (latitude);",
+        "CREATE INDEX pc_longitude ON prices_coordinates_data (longitude);"
+    ]
+    for line in query:
+        run_query(line)
+
 ### Open Street Map data ###
 
 def get_pois(north, south, east, west, tags):
   """Returns points of interest based on bounding box and tags"""
-  return ox.geometries_from_bbox(north, south, east, west, tags)
-
+  try:
+    pois_df = ox.geometries_from_bbox(north, south, east, west, tags)
+    
+  except:
+    print('No data available from OSM within given bounding box.')
+  return pois_df
+    
+    
 def get_bounding_box(latitude, longitude, box_height, box_width):
   north = latitude + box_height/2
   south = latitude - box_height/2
