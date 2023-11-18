@@ -4,6 +4,7 @@ from ipywidgets import interact_manual, Text, Password
 import pymysql
 import urllib.request
 import pandas as pd
+import geopandas as gpd
 import osmnx as ox
 import csv
 
@@ -291,7 +292,7 @@ def create_indices_prices_coordinates():
 
 def get_pois(north, south, east, west, tags):
   """Returns points of interest based on bounding box and tags"""
-  pois_df = pd.DataFrame()
+  pois_df = gpd.GeoDataFrame()
   pois_df.crs = "EPSG:4326"
   try:
     pois_df = ox.geometries_from_bbox(north, south, east, west, tags)
