@@ -209,12 +209,12 @@ def create_indices():
         "CREATE INDEX ppdata_price ON pp_data (price);",
         "CREATE INDEX ppdata_date_of_transfer ON pp_data (date_of_transfer);",
         "CREATE INDEX ppdata_property_type ON pp_data (property_type);",
-        "CREATE INDEX ppdata_new_build_flag ON pp_data (new_build_flag);",
-        "CREATE INDEX ppdata_tenure_type ON pp_data (tenure_type);",
-        "CREATE INDEX ppdata_locality ON pp_data (locality);",
-        "CREATE INDEX ppdata_town_city ON pp_data (town_city);",
-        "CREATE INDEX ppdata_district ON pp_data (district);",
-        "CREATE INDEX ppdata_county ON pp_data (county);",
+        # "CREATE INDEX ppdata_new_build_flag ON pp_data (new_build_flag);",
+        # "CREATE INDEX ppdata_tenure_type ON pp_data (tenure_type);",
+        # "CREATE INDEX ppdata_locality ON pp_data (locality);",
+        # "CREATE INDEX ppdata_town_city ON pp_data (town_city);",
+        # "CREATE INDEX ppdata_district ON pp_data (district);",
+        # "CREATE INDEX ppdata_county ON pp_data (county);",
         "CREATE INDEX ppdata_postcode ON pp_data (postcode);",
         "CREATE INDEX postcodedata_postcode ON postcode_data (postcode);",
         "CREATE INDEX postcodedata_country ON postcode_data (country);",
@@ -269,6 +269,13 @@ def create_prices_coordinates_data():
     run_query(schema)
 
 
+def get_prices_coordinates_df(north, south, east, west):
+    sql_query = f"SELECT latitude, longitude FROM prices_coordinates_data WHERE latitude >= {south} AND latitude <= {north} AND longitude >= {west} AND longitude <= {east}"
+    prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query))
+    prices_coordinates_df.crs = "EPSG:4326"
+    return prices_coordinates_df
+
+
 ### Open Street Map data ###
 
 def get_pois(north, south, east, west, tags):
@@ -281,3 +288,4 @@ def get_bounding_box(latitude, longitude, box_height, box_width):
   west = longitude - box_width/2
   east = longitude + box_width/2
   return (north, south, west, east)
+
