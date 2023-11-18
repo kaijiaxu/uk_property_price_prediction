@@ -31,7 +31,6 @@ def data_validation_df(latitude, longitude):
     tags = {"residential": True}
     (north, south, west, east) = access.get_bounding_box(latitude, longitude, 0.02, 0.02)
     osm_df = access.get_pois(north, south, east, west, tags)
-    osm_df = osm_df[osm_df.residential.notnull()]
     print(f"Number of properties from OSM: {len(osm_df)}")
     # Query prices_coordinates_data
     prices_coordinates_df = access.get_prices_coordinates_df(north, south, east, west)
