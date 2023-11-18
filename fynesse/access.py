@@ -206,20 +206,20 @@ def create_indices():
     I suspect only the ppdata_date_postcode and postcodedata_postcode are needed, but I created indices for all fields in `prices_coordinates_data`.
     """
     query = [
-        "CREATE INDEX ppdata_price ON pp_data (price);",
-        "CREATE INDEX ppdata_date_of_transfer ON pp_data (date_of_transfer);",
-        "CREATE INDEX ppdata_property_type ON pp_data (property_type);",
-        "CREATE INDEX ppdata_new_build_flag ON pp_data (new_build_flag);",
-        "CREATE INDEX ppdata_tenure_type ON pp_data (tenure_type);",
-        "CREATE INDEX ppdata_locality ON pp_data (locality);",
-        "CREATE INDEX ppdata_town_city ON pp_data (town_city);",
-        "CREATE INDEX ppdata_district ON pp_data (district);",
-        "CREATE INDEX ppdata_county ON pp_data (county);",
-        "CREATE INDEX ppdata_postcode ON pp_data (postcode);",
-        "CREATE INDEX postcodedata_postcode ON postcode_data (postcode);",
-        "CREATE INDEX postcodedata_country ON postcode_data (country);",
-        "CREATE INDEX postcodedata_latitude ON postcode_data (latitude);",
-        "CREATE INDEX postcodedata_longitude ON postcode_data (longitude);"
+        "CREATE INDEX IF NOT EXISTS ppdata_price ON pp_data (price);",
+        "CREATE INDEX IF NOT EXISTS ppdata_date_of_transfer ON pp_data (date_of_transfer);",
+        "CREATE INDEX IF NOT EXISTS ppdata_property_type ON pp_data (property_type);",
+        "CREATE INDEX IF NOT EXISTS ppdata_new_build_flag ON pp_data (new_build_flag);",
+        "CREATE INDEX IF NOT EXISTS ppdata_tenure_type ON pp_data (tenure_type);",
+        "CREATE INDEX IF NOT EXISTS ppdata_locality ON pp_data (locality);",
+        "CREATE INDEX IF NOT EXISTS ppdata_town_city ON pp_data (town_city);",
+        "CREATE INDEX IF NOT EXISTS ppdata_district ON pp_data (district);",
+        "CREATE INDEX IF NOT EXISTS ppdata_county ON pp_data (county);",
+        "CREATE INDEX IF NOT EXISTS ppdata_postcode ON pp_data (postcode);",
+        "CREATE INDEX IF NOT EXISTS postcodedata_postcode ON postcode_data (postcode);",
+        "CREATE INDEX IF NOT EXISTS postcodedata_country ON postcode_data (country);",
+        "CREATE INDEX IF NOT EXISTS postcodedata_latitude ON postcode_data (latitude);",
+        "CREATE INDEX IF NOT EXISTS postcodedata_longitude ON postcode_data (longitude);"
     ]
     for line in query:
         run_query(line)
@@ -281,8 +281,8 @@ def create_indices_prices_coordinates():
     Index the prices_coordinates_data table.
     """
     query = [
-        "CREATE INDEX pc_latitude ON prices_coordinates_data (latitude);",
-        "CREATE INDEX pc_longitude ON prices_coordinates_data (longitude);"
+        "CREATE INDEX IF NOT EXISTS pc_latitude ON prices_coordinates_data (latitude);",
+        "CREATE INDEX IF NOT EXISTS pc_longitude ON prices_coordinates_data (longitude);"
     ]
     for line in query:
         run_query(line)
@@ -293,12 +293,12 @@ def get_pois(north, south, east, west, tags):
   """Returns points of interest based on bounding box and tags"""
   try:
     pois_df = ox.geometries_from_bbox(north, south, east, west, tags)
-    
+    return pois_df
   except:
     print('No data available from OSM within given bounding box.')
-  return pois_df
+    return pd.DataFrame()
     
-    
+
 def get_bounding_box(latitude, longitude, box_height, box_width):
   north = latitude + box_height/2
   south = latitude - box_height/2
