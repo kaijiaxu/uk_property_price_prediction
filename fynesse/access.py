@@ -291,12 +291,14 @@ def create_indices_prices_coordinates():
 
 def get_pois(north, south, east, west, tags):
   """Returns points of interest based on bounding box and tags"""
+  pois_df = pd.DataFrame()
+  pois_df.crs = "EPSG:4326"
   try:
     pois_df = ox.geometries_from_bbox(north, south, east, west, tags)
     return pois_df
   except:
     print('No data available from OSM within given bounding box.')
-    return pd.DataFrame()
+  return pois_df
     
 
 def get_bounding_box(latitude, longitude, box_height, box_width):
