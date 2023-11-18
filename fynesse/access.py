@@ -272,7 +272,7 @@ def create_prices_coordinates_data():
 
 def get_prices_coordinates_df(north, south, east, west):
     sql_query = f"SELECT latitude, longitude FROM prices_coordinates_data WHERE latitude >= {south} AND latitude <= {north} AND longitude >= {west} AND longitude <= {east}"
-    prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query))
+    prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query), columns=['latitude', 'longitude'])
     prices_coordinates_df.crs = "EPSG:4326"
     return prices_coordinates_df
 
@@ -292,15 +292,14 @@ def create_indices_prices_coordinates():
 
 def get_pois(north, south, east, west, tags):
   """Returns points of interest based on bounding box and tags"""
-  pois_df = gpd.GeoDataFrame()
+  pois_df = gpd.GeoDataFrame(columns=['geometry'], geometry='geometry')
   pois_df.crs = "EPSG:4326"
   try:
     pois_df = ox.geometries_from_bbox(north, south, east, west, tags)
-    return pois_df
   except:
     print('No data available from OSM within given bounding box.')
   return pois_df
-    
+
 
 def get_bounding_box(latitude, longitude, box_height, box_width):
   north = latitude + box_height/2

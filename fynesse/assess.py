@@ -9,6 +9,7 @@ import mlai.plot as plot
 import pandas as pd
 import ipywidgets as widgets
 from ipywidgets import interact
+import geopandas as gpd
 from geopandas.tools import sjoin
 from IPython.display import display
 
@@ -34,6 +35,9 @@ def data_validation_df(latitude, longitude):
     print(f"Number of properties from OSM: {len(osm_df)}")
     # Query prices_coordinates_data
     prices_coordinates_df = access.get_prices_coordinates_df(north, south, east, west)
+    geometry = gpd.points_from_xy(prices_coordinates_df.longitude, prices_coordinates_df.latitude)
+    prices_coordinates_df = gpd.GeoDataFrame(prices_coordinates_df, geometry=geometry)
+    prices_coordinates_df.crs = "EPSG:4326"
     print(f"Number of properties from prices_coordinates_data: {len(prices_coordinates_df)}")
     # Join the two dataframes based on geometry
     joined_df = sjoin(osm_df, prices_coordinates_df, how='inner')
@@ -46,7 +50,7 @@ def data_validation_interaction():
     """
     latitude_slider = widgets.FloatSlider(min=49.89517100, max=55.79741500, step=0.02, value=50)
     longitude_slider = widgets.FloatSlider(min=-6.35264700, max=1.76277300, step=0.02, value=0)
-    _ = interact(data_validation_df, 
+    _ = interact(data_validation_df,
             latitude=latitude_slider,
             longitude=longitude_slider)
     
