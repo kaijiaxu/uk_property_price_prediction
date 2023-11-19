@@ -24,38 +24,60 @@ import sklearn.feature_extraction"""
 """Place commands in this file to assess the data you have downloaded. How are missing values encoded, how are outliers encoded? What do columns represent, makes rure they are correctly labeled. How is the data indexed. Crete visualisation routines to assess the data (e.g. in bokeh). Ensure that date formats are correct and correctly timezoned."""
 
 
-def data_validation_df(latitude, longitude):
+def data_validation_df(latitude, longitude, scale):
     """
     Matches property data from OSM to prices_coordinates_data
     """
     # Query OSM for residential data. Includes 'apartments', 'terrace', 'house', 'detached' or 'semidetached_house'.
     tags = {"residential": True}
-    (north, south, west, east) = access.get_bounding_box(latitude, longitude, 0.02, 0.02)
+    (north, south, east, west) = access.get_bounding_box(latitude, longitude, scale, scale)
     osm_df = access.get_pois(north, south, east, west, tags)
     print(f"Number of properties from OSM: {len(osm_df)}")
     # Query prices_coordinates_data
     prices_coordinates_df = access.get_prices_coordinates_df(north, south, east, west)
-    geometry = gpd.points_from_xy(prices_coordinates_df.longitude, prices_coordinates_df.latitude)
-    prices_coordinates_df = gpd.GeoDataFrame(prices_coordinates_df, geometry=geometry)
-    prices_coordinates_df.crs = "EPSG:4326"
     print(f"Number of properties from prices_coordinates_data: {len(prices_coordinates_df)}")
     # Join the two dataframes based on geometry
     joined_df = sjoin(osm_df, prices_coordinates_df, how='inner')
     print(f"Number of matches: {len(joined_df)}")
     return display(joined_df)
 
-def data_validation_interaction():
+
+def osm_plot(latitude, longitude, tags):
+    """
+    Plots the data from OSM to see the distribution
+    """
+    tag_names = '-'.join(tags.keys())
+    # Plot UK outline
+    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world_gdf.crs = "EPSG:4326"
+    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+
+    # Get OSM data
+    data = access.get_pois(55.79741500, 49.89517100, 1.76277300, -6.35264700, tags)
+    node_data = data.loc['node']
+
+    fig, ax = plt.subplots(figsize=plot.big_figsize)
+    uk_gdf.plot(ax=ax, color='white', edgecolor='black')
+    node_data.plot(ax=ax, color='b', alpha=0.05)
+    ax.set_xlabel('longitude')
+    ax.set_ylabel('latitude')
+    fig.suptitle(f'OSM data for {tag_names}') 
+    plt.tight_layout() 
+    mlai.write_figure(f'osm-{tag_names}.jpg', directory='./ml')
+
+
+def data_validation_interaction(scale):
     """
     Allows interaction in the Jupyter Notebook
     """
-    latitude_slider = widgets.FloatSlider(min=49.89517100, max=55.79741500, step=0.02, value=50)
-    longitude_slider = widgets.FloatSlider(min=-6.35264700, max=1.76277300, step=0.02, value=0)
+    latitude_slider = widgets.FloatSlider(min=49.89517100, max=55.79741500, step=scale, value=50)
+    longitude_slider = widgets.FloatSlider(min=-6.35264700, max=1.76277300, step=scale, value=0)
     _ = interact(data_validation_df,
             latitude=latitude_slider,
-            longitude=longitude_slider)
-    
+            longitude=longitude_slider,
+            scale=scale)
 
-# def data_validation_plot():
+
 
 # def data():
 #     """Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame."""

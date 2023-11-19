@@ -273,6 +273,8 @@ def create_prices_coordinates_data():
 def get_prices_coordinates_df(north, south, east, west):
     sql_query = f"SELECT latitude, longitude FROM prices_coordinates_data WHERE latitude >= {south} AND latitude <= {north} AND longitude >= {west} AND longitude <= {east}"
     prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query), columns=['latitude', 'longitude'])
+    geometry = gpd.points_from_xy(prices_coordinates_df.longitude, prices_coordinates_df.latitude)
+    prices_coordinates_df = gpd.GeoDataFrame(prices_coordinates_df, geometry=geometry)
     prices_coordinates_df.crs = "EPSG:4326"
     return prices_coordinates_df
 
@@ -282,6 +284,7 @@ def create_indices_prices_coordinates():
     Index the prices_coordinates_data table.
     """
     query = [
+        "CREATE INDEX IF NOT EXISTS pc_price ON prices_coordinates_data (price);",
         "CREATE INDEX IF NOT EXISTS pc_latitude ON prices_coordinates_data (latitude);",
         "CREATE INDEX IF NOT EXISTS pc_longitude ON prices_coordinates_data (longitude);"
     ]
@@ -306,5 +309,5 @@ def get_bounding_box(latitude, longitude, box_height, box_width):
   south = latitude - box_height/2
   west = longitude - box_width/2
   east = longitude + box_width/2
-  return (north, south, west, east)
+  return (north, south, east, west)
 
