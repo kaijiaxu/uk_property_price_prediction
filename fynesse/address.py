@@ -25,10 +25,7 @@ import scipy.stats"""
 
 ### Helper functions ###
 def validate_parse_date(date_text):
-    try:
-        datetime.date.fromisoformat(date_text)
-    except ValueError:
-        raise ValueError("Incorrect data format, should be YYYY-MM-DD")
+    # If date_text is not of the correct format, strptime will throw a ValueError
     dt = datetime.strptime(date_text, '%Y-%m-%d')
     return (dt.year, dt.month, dt.day)
 
