@@ -8,7 +8,7 @@ import mlai
 import mlai.plot as plot
 import pandas as pd
 import ipywidgets as widgets
-from ipywidgets import interact
+from ipywidgets import interact, fixed
 import geopandas as gpd
 from geopandas.tools import sjoin
 from IPython.display import display
@@ -42,7 +42,7 @@ def data_validation_df(latitude, longitude, scale):
     return display(joined_df)
 
 
-def osm_plot(latitude, longitude, tags):
+def osm_plot(tags):
     """
     Plots the data from OSM to see the distribution
     """
@@ -75,7 +75,7 @@ def data_validation_interaction(scale):
     _ = interact(data_validation_df,
             latitude=latitude_slider,
             longitude=longitude_slider,
-            scale=scale)
+            scale=fixed(scale))
 
 
 
