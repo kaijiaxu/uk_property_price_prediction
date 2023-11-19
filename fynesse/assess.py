@@ -44,7 +44,7 @@ def data_validation_df(latitude, longitude, scale):
 
 def osm_plot(tags):
     """
-    Plots the data from OSM to see the distribution
+    Plots the data from OSM for the whole of the UK to see the distribution
     """
     tag_names = '-'.join(tags.keys())
     # Plot UK outline
