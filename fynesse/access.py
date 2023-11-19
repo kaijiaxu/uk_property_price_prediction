@@ -192,7 +192,6 @@ def join_on_the_fly(min_year, max_year, property_type, south, north, east, west)
         f"(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `latitude` >= {south} AND `latitude` <= {north} AND `longitude` >= {west} AND `longitude` <= {east}) postcode_data_temp",
         "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
     join_query = " ".join(join_query)
-    print(join_query)
     results = run_query_return_results(join_query)
     df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
     print(f'Successfully joined on the fly\n')
@@ -270,12 +269,15 @@ def create_prices_coordinates_data():
     run_query(schema)
 
 
-def get_prices_coordinates_df(north, south, east, west):
-    sql_query = f"SELECT latitude, longitude FROM prices_coordinates_data WHERE latitude >= {south} AND latitude <= {north} AND longitude >= {west} AND longitude <= {east}"
-    prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query), columns=['latitude', 'longitude'])
-    geometry = gpd.points_from_xy(prices_coordinates_df.longitude, prices_coordinates_df.latitude)
-    prices_coordinates_df = gpd.GeoDataFrame(prices_coordinates_df, geometry=geometry)
-    prices_coordinates_df.crs = "EPSG:4326"
+def get_prices_coordinates_df_by_coordinates(north, south, east, west):
+    sql_query = f"SELECT price, latitude, longitude FROM prices_coordinates_data WHERE latitude >= {south} AND latitude <= {north} AND longitude >= {west} AND longitude <= {east}"
+    prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query), columns=['price', 'latitude', 'longitude'])
+    return prices_coordinates_df
+
+
+def get_prices_coordinates_df_by_year(year):
+    sql_query = f"SELECT price, latitude, longitude FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31'"
+    prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query), columns=['price', 'latitude', 'longitude'])
     return prices_coordinates_df
 
 
