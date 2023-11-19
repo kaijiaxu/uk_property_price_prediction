@@ -1,4 +1,5 @@
 # This file contains code for suporting addressing questions in the data
+from .config import *
 from . import access
 
 from datetime import datetime
@@ -74,11 +75,11 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     pois = access.get_pois(north, south, east, west, osm_tags)
 
     # Compute average distance and min distance to features from OSM and append to prices_coordinates_data
-    for osm_key in osm_tags.keys():
+    for (osm_key, osm_value) in osm_tags.items():
         osm_gdf = pois[pois[osm_key].notnull()]["geometry"]
         osm_gdf = osm_gdf[osm_gdf.notnull()]
-        prices_coordinates_data_df['mean distance to ' + osm_key] = mean_distance(prices_coordinates_data_df, osm_gdf)
-        prices_coordinates_data_df['min distance to ' + osm_key] = min_distance(prices_coordinates_data_df, osm_gdf)
+        prices_coordinates_data_df['mean distance to ' + osm_key + '-' + osm_value] = mean_distance(prices_coordinates_data_df, osm_gdf)
+        prices_coordinates_data_df['min distance to ' + osm_key + '-' + osm_value] = min_distance(prices_coordinates_data_df, osm_gdf)
 
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
@@ -109,11 +110,11 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
         np.where(testing_data['tenure_type'] == 'L', 1, 0), 
                              ),axis=1)
     
-    for osm_key in osm_tags.keys():
+    for (osm_key, osm_value) in osm_tags.items():
         design_test = np.concatenate((
             design_test,
-            testing_data['mean distance to ' + osm_key],
-            testing_data['min distance to ' + osm_key]
+            testing_data['mean distance to ' + osm_key + '-' + osm_value],
+            testing_data['min distance to ' + osm_key + '-' + osm_value]
             ), axis = 1)
     test_results = m.predict(design_test)
 
@@ -132,11 +133,11 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
 
     design_pred = [avg_new_build, 1 - avg_new_build, avg_tenure_freehold, avg_tenure_lease]
 
-    for osm_key in osm_tags.keys():
+    for (osm_key, osm_value) in osm_tags.items():
         design_pred = np.concatenate(
             design_pred,
-            prices_coordinates_data_df['mean distance to ' + osm_key],
-            prices_coordinates_data_df['min distance to ' + osm_key]
+            prices_coordinates_data_df['mean distance to ' + osm_key + '-' + osm_value],
+            prices_coordinates_data_df['min distance to ' + osm_key + '-' + osm_value]
             )
 
     pred_price = results.predict(design_pred)
