@@ -25,13 +25,6 @@ import sklearn.feature_extraction"""
 """Place commands in this file to assess the data you have downloaded. How are missing values encoded, how are outliers encoded? What do columns represent, makes rure they are correctly labeled. How is the data indexed. Crete visualisation routines to assess the data (e.g. in bokeh). Ensure that date formats are correct and correctly timezoned."""
 
 
-def togpd(df):
-    geometry = gpd.points_from_xy(df.longitude, df.latitude)
-    df = gpd.GeoDataFrame(df, geometry=geometry)
-    df.crs = "EPSG:4326"
-    return df
-
-
 ### OSM ###
 
 def data_validation_df(latitude, longitude, scale):
@@ -44,7 +37,7 @@ def data_validation_df(latitude, longitude, scale):
     osm_df = access.get_pois(north, south, east, west, tags)
     print(f"Number of properties from OSM: {len(osm_df)}")
     # Query prices_coordinates_data
-    prices_coordinates_df = togpd(access.get_prices_coordinates_df_by_coordinates(north, south, east, west))
+    prices_coordinates_df = access.togpd(access.get_prices_coordinates_df_by_coordinates(north, south, east, west))
     print(f"Number of properties from prices_coordinates_data: {len(prices_coordinates_df)}")
     # Join the two dataframes based on geometry
     joined_df = sjoin(osm_df, prices_coordinates_df, how='inner')
@@ -96,7 +89,7 @@ def price_coord_df(year):
     world_gdf.crs = "EPSG:4326"
     uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
 
-    prices_coordinates_df = togpd(access.get_prices_coordinates_df_by_year(year))
+    prices_coordinates_df = access.togpd(access.get_prices_coordinates_df_by_year(year))
 
     fig, ax = plt.subplots(figsize=plot.big_figsize)
     uk_gdf.plot(ax=ax, color='white', edgecolor='black')
@@ -127,7 +120,7 @@ def mean_price_df(year):
     prices_coordinates_df["latitude_bin"] = to_bin(prices_coordinates_df.latitude)
     prices_coordinates_df["longitude_bin"] = to_bin(prices_coordinates_df.longitude)
     binned_prices_df = prices_coordinates_df.groupby(["latitude_bin", "longitude_bin"])
-    binned_prices_df = togpd(binned_prices_df)
+    binned_prices_df = access.togpd(binned_prices_df)
 
     fig, ax = plt.subplots(figsize=plot.big_figsize)
     uk_gdf.plot(ax=ax, color='white', edgecolor='black')

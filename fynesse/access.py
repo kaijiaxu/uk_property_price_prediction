@@ -180,17 +180,15 @@ def create_postcode_data():
 
 ### Option A: Join on the fly ###
 
-def join_on_the_fly(min_year, max_year, property_type, south, north, east, west):
+def join_on_the_fly(min_year, max_year, property_type, north, south, east, west):
     """
     Join by starting letter of postcode, save results into a csv
     """
     # For slightly better readability, join_query was separated:
     join_query = [
-        "SELECT pp_data_temp.`price`, pp_data_temp.`date_of_transfer`, pp_data_temp.`postcode`, pp_data_temp.`property_type`, pp_data_temp.`new_build_flag`, pp_data_temp.`tenure_type`, pp_data_temp.`locality`, pp_data_temp.`town_city`, pp_data_temp.`district`, pp_data_temp.`county`, postcode_data_temp.`country`, postcode_data_temp.`latitude`, postcode_data_temp.`longitude`, pp_data_temp.`db_id` FROM",
-        f"(SELECT `price`, `date_of_transfer`, `postcode`, `property_type`, `new_build_flag`, `tenure_type`, `locality`, `town_city`, `district`, `county`, `db_id` FROM `pp_data` WHERE `property_type` = '{property_type}' AND `date_of_transfer` >= '{min_year}' AND `date_of_transfer` <= '{max_year}') pp_data_temp",
-        "INNER JOIN",
-        f"(SELECT `country`, `latitude`, `longitude`, `postcode` FROM `postcode_data` WHERE `latitude` >= {south} AND `latitude` <= {north} AND `longitude` >= {west} AND `longitude` <= {east}) postcode_data_temp",
-        "ON pp_data_temp.`postcode` = postcode_data_temp.`postcode`"]
+        "SELECT pp_data.`price`, pp_data.`date_of_transfer`, pp_data.`postcode`, pp_data.`property_type`, pp_data.`new_build_flag`, pp_data.`tenure_type`, pp_data.`locality`, pp_data.`town_city`, pp_data.`district`, pp_data.`county`, postcode_data.`country`, postcode_data.`latitude`, postcode_data.`longitude`, pp_data.`db_id` FROM pp_data",
+        "INNER JOIN postcode_data ON pp_data.`postcode` = postcode_data.`postcode`",
+        f"WHERE pp_data.`property_type` = '{property_type}' AND pp_data.`date_of_transfer` >= '{min_year}-01-01' AND pp_data.`date_of_transfer` <= '{max_year}-12-31') AND postcode_data.`latitude` <= {north} AND postcode_data.`longitude` >= {west} AND postcode_data.`longitude` <= {east}"]
     join_query = " ".join(join_query)
     results = run_query_return_results(join_query)
     df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
@@ -313,3 +311,9 @@ def get_bounding_box(latitude, longitude, box_height, box_width):
   east = longitude + box_width/2
   return (north, south, east, west)
 
+
+def togpd(df):
+    geometry = gpd.points_from_xy(df.longitude, df.latitude)
+    df = gpd.GeoDataFrame(df, geometry=geometry)
+    df.crs = "EPSG:4326"
+    return df

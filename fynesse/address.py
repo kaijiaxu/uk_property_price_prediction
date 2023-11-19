@@ -60,26 +60,24 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     """Price prediction for UK housing."""
     
     # 1. Select a bounding box around the housing location in latitude and longitude.
-    (north, south, west, east) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
+    (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
 
     # 2. Select a data range around the prediction date.
     (date_year, date_month, date_day) = validate_parse_date(date)
 
     # 3. Use the data ecosystem you have build above to build a training set from the relevant time period and location in the UK. Include appropriate features from OSM to improve the prediction.
-    prices_coordinates_data_df = access.join_on_the_fly(date_year - 1, date_year + 1, property_type, south, north, east, west)
+    prices_coordinates_data_df = access.togpd(access.join_on_the_fly(date_year - 1, date_year + 1, property_type, north, south, east, west))
 
-    if len(prices_coordinates_data_df):
+    if len(prices_coordinates_data_df) == 0:
         print("No training data. Try increasing bbox_size.")
         return None
     
-    pois = access.get_pois(north, south, east, west, osm_tags)
-
+    osm_gdf = access.get_pois(north, south, east, west, osm_tags)
     # Compute average distance and min distance to features from OSM and append to prices_coordinates_data
     for (osm_key, osm_value) in osm_tags.items():
-        osm_gdf = pois[pois[osm_key].notnull()]["geometry"]
         osm_gdf = osm_gdf[osm_gdf.notnull()]
-        prices_coordinates_data_df['mean distance to ' + osm_key + '-' + osm_value] = mean_distance(prices_coordinates_data_df, osm_gdf)
-        prices_coordinates_data_df['min distance to ' + osm_key + '-' + osm_value] = min_distance(prices_coordinates_data_df, osm_gdf)
+        prices_coordinates_data_df['mean distance to ' + osm_key + '-' + str(osm_value)] = mean_distance(prices_coordinates_data_df, osm_gdf)
+        prices_coordinates_data_df['min distance to ' + osm_key + '-' + str(osm_value)] = min_distance(prices_coordinates_data_df, osm_gdf)
 
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
@@ -92,11 +90,11 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
         np.where(training_data['tenure_type'] == 'L', 1, 0), 
                              ),axis=1)
     
-    for osm_key in osm_tags.keys():
+    for (osm_key, osm_value) in osm_tags.items():
         design = np.concatenate((
             design,
-            training_data['mean distance to ' + osm_key],
-            training_data['min distance to ' + osm_key]
+            training_data['mean distance to ' + osm_key + '-' + str(osm_value)],
+            training_data['min distance to ' + osm_key + '-' + str(osm_value)]
             ), axis = 1)
     m = sm.OLS(training_data['price'], design)
     results = m.fit_regularized(alpha=0.10,L1_wt=0.0)
@@ -113,8 +111,8 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     for (osm_key, osm_value) in osm_tags.items():
         design_test = np.concatenate((
             design_test,
-            testing_data['mean distance to ' + osm_key + '-' + osm_value],
-            testing_data['min distance to ' + osm_key + '-' + osm_value]
+            testing_data['mean distance to ' + osm_key + '-' + str(osm_value)],
+            testing_data['min distance to ' + osm_key + '-' + str(osm_value)]
             ), axis = 1)
     test_results = m.predict(design_test)
 
@@ -136,8 +134,8 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     for (osm_key, osm_value) in osm_tags.items():
         design_pred = np.concatenate(
             design_pred,
-            prices_coordinates_data_df['mean distance to ' + osm_key + '-' + osm_value],
-            prices_coordinates_data_df['min distance to ' + osm_key + '-' + osm_value]
+            prices_coordinates_data_df['mean distance to ' + osm_key + '-' + str(osm_value)],
+            prices_coordinates_data_df['min distance to ' + osm_key + '-' + str(osm_value)]
             )
 
     pred_price = results.predict(design_pred)
