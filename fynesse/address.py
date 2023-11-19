@@ -1,7 +1,7 @@
 # This file contains code for suporting addressing questions in the data
 from . import access
 
-import datetime
+from datetime import datetime
 import numpy as np
 import statsmodels.api as sm
 from sklearn.model_selection import train_test_split
@@ -56,7 +56,6 @@ osm_tags = {
     "shop": "deparment_store",
     "shop": "supermarket",
     "tourism": True,
-
 }
 
 def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags):
@@ -146,4 +145,4 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     pred_price = results.predict(design_pred)
     print(f"The predicted price for a house at latitude={latitude}, logitude={longitude}, of property type {property_type} on {date} is predicted to be of £{pred_price}.\n")
 
-    return pred_price, None
+    return pred_price, r2
