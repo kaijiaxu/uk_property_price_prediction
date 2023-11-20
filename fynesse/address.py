@@ -38,7 +38,7 @@ def num_of_pois(prices_coord_gdf, osm_key, osm_value, neighbourhood_size):
     Adds a column to `prices_coord_gdf` stating the number of POIs with the specific `tag` in OSM, within the `neighbourhood_size` from the given `latitude` and `longitude`.
     """
     prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
-    prices_coord_gdf_copy['number of ' + osm_key + '-' + osm_value + ' in neighbourhood'] = prices_coord_gdf_copy['geometry'].apply(lambda house: len((access.get_pois(house.y + neighbourhood_size/2, house.y - neighbourhood_size/2, house.x + neighbourhood_size/2, house.x - neighbourhood_size/2, {osm_key: osm_value})).notna()))
+    prices_coord_gdf_copy['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood'] = prices_coord_gdf_copy['geometry'].apply(lambda house: len((access.get_pois(house.y + neighbourhood_size/2, house.y - neighbourhood_size/2, house.x + neighbourhood_size/2, house.x - neighbourhood_size/2, {osm_key: osm_value})).notna()))
     return prices_coord_gdf_copy
 
 
