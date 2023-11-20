@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import statsmodels.api as sm
+from statsmodels.api import add_constant
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
@@ -50,31 +51,28 @@ def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood
 
 
 def build_design_matrix(df, osm_tags):
-    design = np.column_stack((
-        np.where(df['new_build_flag'] == 'Y', 1, 0), 
-        np.where(df['new_build_flag'] == 'N', 1, 0), 
-        np.where(df['tenure_type'] == 'F', 1, 0), 
-        np.where(df['tenure_type'] == 'L', 1, 0), 
-    ))
+    df_copy = gpd.GeoDataFrame(df.copy(deep=True))
+    df_copy['new_build'] = df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
+    df_copy['old_build'] = df['new_build_flag'].apply(lambda x: 1 if x == 'N' else 0)
+    df_copy['freehold'] = df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
+    df_copy['lease'] = df['tenure_type'].apply(lambda x: 1 if x == 'L' else 0)
+    df_copy['const'] = 1
+
+    column_names = ['const', 'new_build', 'old_build', 'freehold', 'lease'] 
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
-            design = np.column_stack((design, df['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']))
-    design = sm.add_constant(design)
-    return design
+            column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
+    return df_copy[column_names]
 
 
 def build_prediction_matrix(df, osm_tags):
-    design = np.column_stack((
-        df['new_build'], 
-        df['old_build'], 
-        df['freehold'], 
-        df['lease']
-    ))
+    df['const'] = 1
+    column_names = ['const', 'new_build', 'old_build', 'freehold', 'lease'] 
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
-            design = np.column_stack((design, df['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']))
-    design = sm.add_constant(design)
-    return design
+            column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
+    return df[column_names]
+
 
 ### Address functions ###
 
@@ -117,15 +115,15 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     # 4. Train a linear model on the data set you have created.
     design = build_design_matrix(training_data, osm_tags)
 
-    m = sm.OLS(np.array(training_data['price']), design)
+    m = sm.OLS(training_data['price'], design)
     results = m.fit()
     print(results.summary())
 
     # 5. Validate the quality of the model.
     design_test = build_design_matrix(testing_data, osm_tags)
-    
+
     test_results = results.predict(design_test)
-    r2 = r2_score(np.array(testing_data['price']), np.array(test_results))
+    r2 = r2_score(testing_data['price'], test_results)
     print(f"R-squared: {r2:.6f}\n")
 
     if r2 < 0.4 or len(testing_data['price']) <= 1:
