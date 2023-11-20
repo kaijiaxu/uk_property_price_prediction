@@ -100,43 +100,125 @@ def price_coord_df(year):
     plt.tight_layout() 
     mlai.write_figure(f'Prices-coord-{year}.jpg', directory='./ml')
 
-def price_coord_interaction(year):
+def price_coord_by_year(year):
     """
     Plots the latitude by longitude graph to see the distribution of prices_coordinates_data
     """
     _ = interact(price_coord_df,
             year=fixed(year))
     
-# def mean_price_df(year):
-#     # Plot UK outline
+def plot_property_type_distribution(year):
+    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world_gdf.crs = "EPSG:4326"
+    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+
+    results = access.run_query_return_results(f"SELECT latitude, longitude, property_type FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
+    df = pd.DataFrame(results, columns=['latitude', 'longitude', 'property_type'])
+
+    prices_coordinates_df = access.togpd(df)
+    detached = prices_coordinates_df[prices_coordinates_df['property_type'] == 'D']
+    semidetached = prices_coordinates_df[prices_coordinates_df['property_type'] == 'S']
+    terraced = prices_coordinates_df[prices_coordinates_df['property_type'] == 'T']
+    flats = prices_coordinates_df[prices_coordinates_df['property_type'] == 'F']
+    other = prices_coordinates_df[prices_coordinates_df['property_type'] == 'O']
+
+    fig, ax = plt.subplots(figsize=plot.big_figsize)
+    uk_gdf.plot(ax=ax, color='white', edgecolor='black')
+    detached.plot(ax=ax, color='r', alpha=0.05)
+    semidetached.plot(ax=ax, color='g', alpha=0.05)
+    terraced.plot(ax=ax, color='b', alpha=0.05)
+    flats.plot(ax=ax, color='c', alpha=0.05)
+    other.plot(ax=ax, color='m', alpha=0.05)
+    ax.legend(["detached", "semidetached", "terraced", "flats", "other"])
+    ax.set_xlabel('longitude')
+    ax.set_ylabel('latitude')
+    fig.suptitle(f'Property Type distribution for {year}') 
+    plt.tight_layout() 
+    mlai.write_figure(f'property-type-{year}.jpg', directory='./ml')
+
+
+def plot_new_build_distribution(year):
+    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world_gdf.crs = "EPSG:4326"
+    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+
+    results = access.run_query_return_results(f"SELECT latitude, longitude, new_build_flag FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
+    df = pd.DataFrame(results, columns=['latitude', 'longitude', 'new_build_flag'])
+
+    prices_coordinates_df = access.togpd(df)
+    old_build = prices_coordinates_df[prices_coordinates_df['new_build_flag'] == 'N']
+    new_build = prices_coordinates_df[prices_coordinates_df['new_build_flag'] == 'Y']
+
+    fig, ax = plt.subplots(figsize=plot.big_figsize)
+    uk_gdf.plot(ax=ax, color='white', edgecolor='black')
+    old_build.plot(ax=ax, color='g', alpha=0.05)
+    new_build.plot(ax=ax, color='r', alpha=0.05)
+    ax.legend(["old builds", "new builds"])
+    ax.set_xlabel('longitude')
+    ax.set_ylabel('latitude')
+
+    fig.suptitle(f'New Build distribution for {year}') 
+    plt.tight_layout() 
+    mlai.write_figure(f'new-build-{year}.jpg', directory='./ml')
+
+
+def plot_tenure_type_distribution(year):
+    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world_gdf.crs = "EPSG:4326"
+    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+
+    results = access.run_query_return_results(f"SELECT latitude, longitude, tenure_type FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
+    df = pd.DataFrame(results, columns=['latitude', 'longitude', 'tenure_type'])
+
+    prices_coordinates_df = access.togpd(df)
+    freehold = prices_coordinates_df[prices_coordinates_df['tenure_type'] == 'F']
+    lease = prices_coordinates_df[prices_coordinates_df['tenure_type'] == 'L']
+    other = prices_coordinates_df[(prices_coordinates_df['tenure_type'] != 'L') & (prices_coordinates_df['tenure_type'] != 'F')]
+
+    fig, ax = plt.subplots(figsize=plot.big_figsize)
+    uk_gdf.plot(ax=ax, color='white', edgecolor='black')
+    freehold.plot(ax=ax, color='r', alpha=0.05)
+    lease.plot(ax=ax, color='g', alpha=0.05)
+    other.plot(ax=ax, color='b', alpha=0.05)
+    ax.set_xlabel('longitude')
+    ax.set_ylabel('latitude')
+    ax.legend(["freehold", "lease", "others"])
+    fig.suptitle(f'Tenure Type distribution for {year}') 
+    plt.tight_layout() 
+    mlai.write_figure(f'tenure-type-{year}.jpg', directory='./ml')
+
+
+
+def plot_average_price_by_year():
+    results = access.run_query_return_results("SELECT EXTRACT(year FROM date_of_transfer) AS year, AVG(price) AS average_price FROM prices_coordinates_data GROUP BY EXTRACT(year FROM date_of_transfer);")
+    df = pd.DataFrame(results, columns=['year', 'average_price'])
+    print(df)
+    plt.plot(df['year'], df['average_price'])
+    plt.title('Average property prices across the years')
+    plt.xlabel('Year')
+    plt.ylabel('Average Price')
+    plt.show()
+
+# def plot_correlation_price_property_type(year):
 #     world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
 #     world_gdf.crs = "EPSG:4326"
 #     uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
 
-#     prices_coordinates_df = access.get_prices_coordinates_df_by_year(year)
+#     results = access.run_query_return_results(f"SELECT AVG(price), property_type FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31' GROUP BY property_type;")
+#     df = pd.DataFrame(results, columns=['average_price', 'property_type'])
 
-#     step = 0.2
-#     to_bin = lambda x: np.floor(x / step) * step
-#     prices_coordinates_df["latitude_bin"] = to_bin(prices_coordinates_df.latitude)
-#     prices_coordinates_df["longitude_bin"] = to_bin(prices_coordinates_df.longitude)
-#     binned_prices_df = prices_coordinates_df.groupby(["latitude_bin", "longitude_bin"])
-#     binned_prices_df = access.togpd(binned_prices_df)
+
 
 #     fig, ax = plt.subplots(figsize=plot.big_figsize)
 #     uk_gdf.plot(ax=ax, color='white', edgecolor='black')
-#     prices_coordinates_df.plot(ax=ax, color='b', alpha=0.05)
+#     freehold.plot(ax=ax, color='r', alpha=0.05)
+#     lease.plot(ax=ax, color='g', alpha=0.05)
+#     other.plot(ax=ax, color='b', alpha=0.05)
 #     ax.set_xlabel('longitude')
 #     ax.set_ylabel('latitude')
-#     fig.suptitle(f'Mean prices across regions for {year}') 
+#     fig.suptitle(f'Tenure Type distribution for {year}') 
 #     plt.tight_layout() 
-#     mlai.write_figure(f'Prices-coord-{year}.jpg', directory='./ml')
-
-# def price_coord_interaction(year):
-#     """
-#     Plots the latitude by longitude graph to see the distribution of prices_coordinates_data
-#     """
-#     _ = interact(mean_price_df,
-#             year=fixed(year))
+#     mlai.write_figure(f'tenure-type-{year}.jpg', directory='./ml')
 
 # def data():
 #     """Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame."""
