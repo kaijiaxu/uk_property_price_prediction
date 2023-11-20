@@ -188,7 +188,7 @@ def join_on_the_fly(min_year, max_year, property_type, north, south, east, west)
     join_query = [
         "SELECT pp_data.`price`, pp_data.`date_of_transfer`, pp_data.`postcode`, pp_data.`property_type`, pp_data.`new_build_flag`, pp_data.`tenure_type`, pp_data.`locality`, pp_data.`town_city`, pp_data.`district`, pp_data.`county`, postcode_data.`country`, postcode_data.`latitude`, postcode_data.`longitude`, pp_data.`db_id` FROM pp_data",
         "INNER JOIN postcode_data ON pp_data.`postcode` = postcode_data.`postcode`",
-        f"WHERE pp_data.`property_type` = '{property_type}' AND pp_data.`date_of_transfer` >= '{min_year}-01-01' AND pp_data.`date_of_transfer` <= '{max_year}-12-31') AND postcode_data.`latitude` <= {north} AND postcode_data.`longitude` >= {west} AND postcode_data.`longitude` <= {east}"]
+        f"WHERE pp_data.`property_type` = '{property_type}' AND pp_data.`date_of_transfer` >= '{min_year}-01-01' AND pp_data.`date_of_transfer` <= '{max_year}-12-31' AND postcode_data.`latitude` <= {north} AND postcode_data.`longitude` >= {west} AND postcode_data.`longitude` <= {east}"]
     join_query = " ".join(join_query)
     results = run_query_return_results(join_query)
     df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
@@ -279,6 +279,13 @@ def get_prices_coordinates_df_by_year(year):
     return prices_coordinates_df
 
 
+def get_prices_coordinates_df_for_prediction(min_year, max_year, property_type, north, south, east, west):
+    sql_query = f"SELECT * FROM prices_coordinates_data WHERE `property_type` = '{property_type}' AND `date_of_transfer` >= '{min_year}-01-01' AND `date_of_transfer` <= '{max_year}-12-31' AND `latitude` >= {south} AND `latitude` <= {north} AND `longitude` >= {west} AND `longitude` <= {east}"
+    results = run_query_return_results(sql_query)
+    df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
+    return df
+
+
 def create_indices_prices_coordinates():
     """
     Index the prices_coordinates_data table.
@@ -298,7 +305,7 @@ def get_pois(north, south, east, west, tags):
   pois_df = gpd.GeoDataFrame(columns=['geometry'], geometry='geometry')
   pois_df.crs = "EPSG:4326"
   try:
-    pois_df = ox.geometries_from_bbox(north, south, east, west, tags)
+    pois_df = ox.features_from_bbox(north, south, east, west, tags)
   except:
     print('No data available from OSM within given bounding box.')
   return pois_df

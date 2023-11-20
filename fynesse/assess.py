@@ -45,6 +45,18 @@ def data_validation_df(latitude, longitude, scale):
     return display(joined_df)
 
 
+def data_validation_interaction(scale):
+    """
+    Allows interaction in the Jupyter Notebook
+    """
+    latitude_slider = widgets.FloatSlider(min=49.89517100, max=55.79741500, step=scale, value=50)
+    longitude_slider = widgets.FloatSlider(min=-6.35264700, max=1.76277300, step=scale, value=0)
+    _ = interact(data_validation_df,
+            latitude=latitude_slider,
+            longitude=longitude_slider,
+            scale=fixed(scale))
+
+
 def osm_plot(tags):
     """
     Plots the data from OSM for the whole of the UK to see the distribution
@@ -67,18 +79,6 @@ def osm_plot(tags):
     fig.suptitle(f'OSM data for {tag_names}') 
     plt.tight_layout() 
     mlai.write_figure(f'osm-{tag_names}.jpg', directory='./ml')
-
-
-def data_validation_interaction(scale):
-    """
-    Allows interaction in the Jupyter Notebook
-    """
-    latitude_slider = widgets.FloatSlider(min=49.89517100, max=55.79741500, step=scale, value=50)
-    longitude_slider = widgets.FloatSlider(min=-6.35264700, max=1.76277300, step=scale, value=0)
-    _ = interact(data_validation_df,
-            latitude=latitude_slider,
-            longitude=longitude_slider,
-            scale=fixed(scale))
 
 
 ### Prices Coordinates Data ###
@@ -107,36 +107,36 @@ def price_coord_interaction(year):
     _ = interact(price_coord_df,
             year=fixed(year))
     
-def mean_price_df(year):
-    # Plot UK outline
-    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    world_gdf.crs = "EPSG:4326"
-    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+# def mean_price_df(year):
+#     # Plot UK outline
+#     world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+#     world_gdf.crs = "EPSG:4326"
+#     uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
 
-    prices_coordinates_df = access.get_prices_coordinates_df_by_year(year)
+#     prices_coordinates_df = access.get_prices_coordinates_df_by_year(year)
 
-    step = 0.2
-    to_bin = lambda x: np.floor(x / step) * step
-    prices_coordinates_df["latitude_bin"] = to_bin(prices_coordinates_df.latitude)
-    prices_coordinates_df["longitude_bin"] = to_bin(prices_coordinates_df.longitude)
-    binned_prices_df = prices_coordinates_df.groupby(["latitude_bin", "longitude_bin"])
-    binned_prices_df = access.togpd(binned_prices_df)
+#     step = 0.2
+#     to_bin = lambda x: np.floor(x / step) * step
+#     prices_coordinates_df["latitude_bin"] = to_bin(prices_coordinates_df.latitude)
+#     prices_coordinates_df["longitude_bin"] = to_bin(prices_coordinates_df.longitude)
+#     binned_prices_df = prices_coordinates_df.groupby(["latitude_bin", "longitude_bin"])
+#     binned_prices_df = access.togpd(binned_prices_df)
 
-    fig, ax = plt.subplots(figsize=plot.big_figsize)
-    uk_gdf.plot(ax=ax, color='white', edgecolor='black')
-    prices_coordinates_df.plot(ax=ax, color='b', alpha=0.05)
-    ax.set_xlabel('longitude')
-    ax.set_ylabel('latitude')
-    fig.suptitle(f'Mean prices across regions for {year}') 
-    plt.tight_layout() 
-    mlai.write_figure(f'Prices-coord-{year}.jpg', directory='./ml')
+#     fig, ax = plt.subplots(figsize=plot.big_figsize)
+#     uk_gdf.plot(ax=ax, color='white', edgecolor='black')
+#     prices_coordinates_df.plot(ax=ax, color='b', alpha=0.05)
+#     ax.set_xlabel('longitude')
+#     ax.set_ylabel('latitude')
+#     fig.suptitle(f'Mean prices across regions for {year}') 
+#     plt.tight_layout() 
+#     mlai.write_figure(f'Prices-coord-{year}.jpg', directory='./ml')
 
-def price_coord_interaction(year):
-    """
-    Plots the latitude by longitude graph to see the distribution of prices_coordinates_data
-    """
-    _ = interact(mean_price_df,
-            year=fixed(year))
+# def price_coord_interaction(year):
+#     """
+#     Plots the latitude by longitude graph to see the distribution of prices_coordinates_data
+#     """
+#     _ = interact(mean_price_df,
+#             year=fixed(year))
 
 # def data():
 #     """Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame."""
