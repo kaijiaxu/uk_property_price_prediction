@@ -59,6 +59,7 @@ def build_design_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             design = np.column_stack((design, df['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']))
+    design = sm.add_constant(design)
     return design
 
 
@@ -72,6 +73,7 @@ def build_prediction_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             design = np.column_stack((design, df['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']))
+    design = sm.add_constant(design)
     return design
 
 ### Address functions ###
