@@ -113,14 +113,14 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
 
     # 4. Train a linear model on the data set you have created.
-    design = build_design_matrix(training_data)
+    design = build_design_matrix(training_data, osm_tags)
 
     m = sm.OLS(np.array(training_data['price']), design)
     results = m.fit()
     print(results.summary())
 
     # 5. Validate the quality of the model.
-    design_test = build_design_matrix(testing_data)
+    design_test = build_design_matrix(testing_data, osm_tags)
     
     test_results = results.predict(design_test)
     r2 = r2_score(np.array(testing_data['price']), np.array(test_results))
