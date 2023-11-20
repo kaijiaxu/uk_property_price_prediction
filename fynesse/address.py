@@ -49,6 +49,31 @@ def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood
     return prices_coordinates_data_df
 
 
+def build_design_matrix(df, osm_tags):
+    design = np.column_stack((
+        np.where(df['new_build_flag'] == 'Y', 1, 0), 
+        np.where(df['new_build_flag'] == 'N', 1, 0), 
+        np.where(df['tenure_type'] == 'F', 1, 0), 
+        np.where(df['tenure_type'] == 'L', 1, 0), 
+    ))
+    for osm_key in osm_tags:
+        for osm_value in osm_tags[osm_key]:
+            design = np.column_stack((design, df['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']))
+    return design
+
+
+def build_prediction_matrix(df, osm_tags):
+    design = np.column_stack((
+        df['new_build'], 
+        df['old_build'], 
+        df['freehold'], 
+        df['lease']
+    ))
+    for osm_key in osm_tags:
+        for osm_value in osm_tags[osm_key]:
+            design = np.column_stack((design, df['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']))
+    return design
+
 ### Address functions ###
 
 # Suggested values for bbox_size and osm_tags parameters in predict_price
@@ -82,28 +107,20 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     # Incorporate features from OSM
     prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size)
 
+    print(prices_coordinates_data_df)
+
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
 
     # 4. Train a linear model on the data set you have created.
-    design = np.column_stack((
-        np.where(training_data['new_build_flag'] == 'Y', 1, 0), 
-        np.where(training_data['new_build_flag'] == 'N', 1, 0), 
-        np.where(training_data['tenure_type'] == 'F', 1, 0), 
-        np.where(training_data['tenure_type'] == 'L', 1, 0), 
-                             ))
+    design = build_design_matrix(training_data)
 
     m = sm.OLS(np.array(training_data['price']), design)
     results = m.fit()
     print(results.summary())
 
     # 5. Validate the quality of the model.
-    design_test = np.column_stack((
-        np.where(testing_data['new_build_flag'] == 'Y', 1, 0), 
-        np.where(testing_data['new_build_flag'] == 'N', 1, 0), 
-        np.where(testing_data['tenure_type'] == 'F', 1, 0), 
-        np.where(testing_data['tenure_type'] == 'L', 1, 0), 
-                             ))
+    design_test = build_design_matrix(testing_data)
     
     test_results = results.predict(design_test)
     r2 = r2_score(np.array(testing_data['price']), np.array(test_results))
@@ -122,7 +139,8 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'old_build': 1 - avg_new_build, 'freehold': [avg_tenure_freehold], 'lease': avg_tenure_lease})
     prediction_df = access.togpd(prediction_df)
     prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size)
-    design_pred = prediction_df.to_numpy()
+    print(prediction_df)
+    design_pred = build_prediction_matrix(prediction_df, osm_tags)
 
     pred_price = results.predict(design_pred)
     print(f"The predicted price for a house at latitude={latitude}, logitude={longitude}, of property type {property_type} on {date} is predicted to be of £{pred_price[0]}.\n")

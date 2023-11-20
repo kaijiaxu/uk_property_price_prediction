@@ -306,9 +306,10 @@ def get_pois(north, south, east, west, tags):
   pois_df.crs = "EPSG:4326"
   try:
     pois_df = ox.features_from_bbox(north, south, east, west, tags)
+    return pois_df
   except:
-    print('No data available from OSM within given bounding box.')
-  return pois_df
+    # print(f'No data available from OSM for tags {tags.items()} within given bounding box.')
+    return pois_df
 
 
 def get_bounding_box(latitude, longitude, box_height, box_width):
