@@ -53,12 +53,11 @@ def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood
 def build_design_matrix(df, osm_tags):
     df_copy = gpd.GeoDataFrame(df.copy(deep=True))
     df_copy['new_build'] = df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
-    df_copy['old_build'] = df['new_build_flag'].apply(lambda x: 1 if x == 'N' else 0)
     df_copy['freehold'] = df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
     df_copy['lease'] = df['tenure_type'].apply(lambda x: 1 if x == 'L' else 0)
     df_copy['const'] = 1
 
-    column_names = ['const', 'new_build', 'old_build', 'freehold', 'lease'] 
+    column_names = ['const', 'new_build', 'freehold', 'lease'] 
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
@@ -67,7 +66,7 @@ def build_design_matrix(df, osm_tags):
 
 def build_prediction_matrix(df, osm_tags):
     df['const'] = 1
-    column_names = ['const', 'new_build', 'old_build', 'freehold', 'lease'] 
+    column_names = ['const', 'new_build', 'freehold', 'lease'] 
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
@@ -80,9 +79,9 @@ def build_prediction_matrix(df, osm_tags):
 bbox_size = 0.1
 
 osm_tags = {
-    "amenity": ["bar", "fast_food", "pub", "restaurant", "kindergarten", "school", "bus_station"],
-    "public_transport": ["station"],
-    "shop": ["convenience", "deparment_store", "supermarket"],
+    "amenity": ["fast_food", "restaurant", "kindergarten", "school", "bus_station"],
+    "public_transport": ["platform", "station"],
+    "shop": ["convenience", "mall", "supermarket"],
     "tourism": [True]
 }
 
@@ -98,7 +97,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     (date_year, date_month, date_day) = validate_parse_date(date)
 
     # 3. Use the data ecosystem you have build above to build a training set from the relevant time period and location in the UK. Include appropriate features from OSM to improve the prediction.
-    prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_for_prediction(date_year, date_year, property_type, north, south, east, west))
+    prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_for_prediction(date_year - 1, date_year + 1, property_type, north, south, east, west))
 
     if len(prices_coordinates_data_df) < 10: # Ensures testing_data is of at least length 2, so that we get a r2 score
         print("Not enough training data. Try increasing bbox_size.")
@@ -136,7 +135,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     avg_tenure_freehold = len(prices_coordinates_data_df[prices_coordinates_data_df['tenure_type'] == 'F']) / len(prices_coordinates_data_df)
     avg_tenure_lease = len(prices_coordinates_data_df[prices_coordinates_data_df['tenure_type'] == 'L']) / len(prices_coordinates_data_df)
 
-    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'old_build': 1 - avg_new_build, 'freehold': [avg_tenure_freehold], 'lease': avg_tenure_lease})
+    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold], 'lease': avg_tenure_lease})
     prediction_df = access.togpd(prediction_df)
     prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size)
     print(prediction_df)
