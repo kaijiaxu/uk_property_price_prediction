@@ -43,10 +43,20 @@ def num_of_pois(prices_coord_gdf, osm_key, osm_value, neighbourhood_size):
     return prices_coord_gdf_copy
 
 
-def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size):
+def inverse_min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, longitude):
+    prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
+    prices_coord_gdf_copy.to_crs(epsg=3857, inplace=True)
+    (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
+    opm_gdf = access.get_pois(north, south, east, west, {osm_key: osm_value})
+    opm_gdf.to_crs(epsg=3857, inplace=True)
+    prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1/ (opm_gdf.distance(house).min()))
+    return prices_coord_gdf_copy
+
+def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, osm_key, osm_value, neighbourhood_size)
+            prices_coordinates_data_df = inverse_min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
     return prices_coordinates_data_df
 
 
@@ -104,7 +114,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
         return None
     
     # Incorporate features from OSM
-    prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size)
+    prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
 
     print(prices_coordinates_data_df)
 
@@ -123,7 +133,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
 
     test_results = results.predict(design_test)
     r2 = r2_score(testing_data['price'], test_results)
-    print(f"R-squared: {r2:.6f}\n")
+    print(f"R-squared value using testing data: {r2:.6f}\n")
 
     if r2 < 0.4 or len(testing_data['price']) <= 1:
         print("Warning: prediction quality is poor. Consider ways to improve the model - use more/different OSM tags and increase bounding box size.\n")
@@ -137,7 +147,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
 
     prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold], 'lease': avg_tenure_lease})
     prediction_df = access.togpd(prediction_df)
-    prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size)
+    prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     print(prediction_df)
     design_pred = build_prediction_matrix(prediction_df, osm_tags)
 
