@@ -71,6 +71,7 @@ def build_design_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
+            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df_copy[column_names]
 
 
@@ -80,6 +81,7 @@ def build_prediction_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
+            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df[column_names]
 
 
@@ -91,7 +93,7 @@ bbox_size = 0.1
 osm_tags = {
     "amenity": ["fast_food", "restaurant", "kindergarten", "school", "bus_station"],
     "public_transport": ["platform", "station"],
-    "shop": ["convenience", "mall", "supermarket"],
+    "shop": ["convenience", "supermarket"],
     "tourism": [True]
 }
 
