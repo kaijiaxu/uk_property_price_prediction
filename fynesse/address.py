@@ -50,10 +50,10 @@ def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, l
     opm_gdf = access.get_pois(north, south, east, west, {osm_key: osm_value})
     opm_gdf.to_crs(epsg=3857, inplace=True)
     if len(opm_gdf) != 0:
-        prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: (opm_gdf.distance(house).min()))
+        prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min()))
     else:
         # Set distance to max (bounding box distance)
-        prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = (bbox_size/2) * (40000/360)
+        prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = 1
     return prices_coord_gdf_copy
 
 
@@ -75,7 +75,7 @@ def build_design_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-            column_names += ['min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df_copy[column_names]
 
 
@@ -85,7 +85,7 @@ def build_prediction_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-            column_names += ['min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df[column_names]
 
 
@@ -105,7 +105,7 @@ osm_tags = {
 def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags):
     """Price prediction for UK housing."""
     # Bounding box size for calculating OSM features 
-    neighbourhood_size = 0.02
+    neighbourhood_size = 0.04
 
     # 1. Select a bounding box around the housing location in latitude and longitude.
     (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)

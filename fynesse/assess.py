@@ -282,8 +282,8 @@ def plot_avg_price_distribution(year):
     merged = gpd.sjoin(prices_coordinates_df, gdf_grid, how='left', op='within')
     price_merged = merged.dissolve(by='index_right', aggfunc={"price": "mean"})
     gdf_grid.loc[price_merged.index, 'price'] = price_merged.price.values
-    gdf_grid['price'] = np.log(gdf_grid['price'])
-    ax = gdf_grid.plot(column='price', figsize=(12, 8), cmap='viridis', vmax=10, edgecolor="grey")
+    gdf_grid['log_price'] = np.log(gdf_grid['price'])
+    ax = gdf_grid.plot(column='log_price', figsize=(12, 8), cmap='viridis', vmax=10, edgecolor="grey")
     plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=10), cmap='viridis'),
              ax=ax, orientation='vertical')
     plt.autoscale(False)
