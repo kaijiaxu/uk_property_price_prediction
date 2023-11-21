@@ -51,9 +51,11 @@ def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, l
     opm_gdf.to_crs(epsg=3857, inplace=True)
     if len(opm_gdf) != 0:
         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min()))
+        prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min())**2)
     else:
         # Set distance to max -> inverse approaches 0
         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
+        prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
     return prices_coord_gdf_copy
 
 
@@ -76,6 +78,7 @@ def build_design_matrix(df, osm_tags):
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
             column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df_copy[column_names]
 
 
@@ -86,6 +89,7 @@ def build_prediction_matrix(df, osm_tags):
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
             column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df[column_names]
 
 
@@ -98,7 +102,6 @@ osm_tags = {
     "amenity": ["restaurant", "kindergarten", "school", "bus_station"],
     "public_transport": ["platform"],
     "shop": ["convenience", "supermarket"],
-    "tourism": [True],
     "office": [True]
 }
 
