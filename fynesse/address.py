@@ -53,7 +53,7 @@ def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, l
         prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: (opm_gdf.distance(house).min()))
     else:
         # Set distance to max (bounding box distance)
-        prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = bbox_size/2 * 40,000/360
+        prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = bbox_size/2 * 40000/360
     return prices_coord_gdf_copy
 
 def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
