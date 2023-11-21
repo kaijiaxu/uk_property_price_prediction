@@ -1,6 +1,7 @@
 from .config import *
 
 from . import access
+from . import address
 
 import osmnx as ox
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ import geopandas as gpd
 from geopandas.tools import sjoin
 from IPython.display import display
 import shapely.geometry
+import matplotlib as mpl
 
 """These are the types of import we might expect in this file
 import pandas
@@ -24,6 +26,29 @@ import sklearn.decomposition as decomposition
 import sklearn.feature_extraction"""
 
 """Place commands in this file to assess the data you have downloaded. How are missing values encoded, how are outliers encoded? What do columns represent, makes rure they are correctly labeled. How is the data indexed. Crete visualisation routines to assess the data (e.g. in bokeh). Ensure that date formats are correct and correctly timezoned."""
+
+
+### Helper functions ###
+def get_uk_outline():
+    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world_gdf.crs = "EPSG:4326"
+    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+    return uk_gdf
+
+
+def split_gdf_into_boxes(gdf):
+    BOXES = 50
+    a, b, c, d = gdf.total_bounds
+    # create a grid for UK
+    gdf_grid = gpd.GeoDataFrame(
+        geometry=[
+            shapely.geometry.box(minx, miny, maxx, maxy)
+            for minx, maxx in zip(np.linspace(a, c, BOXES), np.linspace(a, c, BOXES)[1:])
+            for miny, maxy in zip(np.linspace(b, d, BOXES), np.linspace(b, d, BOXES)[1:])
+        ],
+        crs="epsg:4326",
+    )
+    return gdf_grid
 
 
 ### OSM ###
@@ -82,13 +107,37 @@ def osm_plot(tags):
     mlai.write_figure(f'osm-{tag_names}.jpg', directory='./ml')
 
 
+# def find_correlation_between_osm_tag_and_price(year, osm_tags):
+#     prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_by_year(year))
+#     for osm_key in osm_tags:
+#         for osm_value in osm_tags[osm_key]:
+#             prices_coordinates_data_df = address.num_of_pois(prices_coordinates_data_df, osm_key, osm_value, 0.02)
+
+#     gdf_grid = split_gdf_into_boxes(prices_coordinates_data_df)
+#     merged = gpd.sjoin(prices_coordinates_data_df, gdf_grid, how='left', op='within')
+
+#     prices_coordinates_data_df = prices_coordinates_data_df.drop(['latitude', 'longitude', 'geometry'])  
+
+#     price_merged = merged.dissolve(by='index_right', aggfunc={"price": "mean", 'number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood': "mean"})
+#     print(merged)
+#     gdf_grid.loc[price_merged.index, 'price'] = price_merged.price.values
+
+#     fig, ax = plt.subplots(figsize=plot.big_figsize)
+#     im = ax.matshow(prices_coordinates_data_df.corr())
+#     ax.set_xticklabels(prices_coordinates_data_df.columns, fontsize=14, rotation=45)
+#     ax.set_yticklabels(prices_coordinates_data_df.columns, fontsize=14)
+
+#     fig.colorbar(im, ax=ax)
+
+#     mlai.write_figure(filename="corr-matrix.jpg", directory="./ml")     
+
+
 ### Prices Coordinates Data ###
 
 def price_coord_df(year):
+    """Plots all data in prices_coordinates_data within given year on the map of UK"""
     # Plot UK outline
-    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    world_gdf.crs = "EPSG:4326"
-    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+    uk_gdf = get_uk_outline()
 
     prices_coordinates_df = access.togpd(access.get_prices_coordinates_df_by_year(year))
 
@@ -107,55 +156,11 @@ def price_coord_by_year(year):
     """
     _ = interact(price_coord_df,
             year=fixed(year))
-    
 
-def plot_price_distribution(year):
-    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    world_gdf.crs = "EPSG:4326"
-    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
-
-    results = access.run_query_return_results(f"SELECT latitude, longitude, price FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
-    df = pd.DataFrame(results, columns=['latitude', 'longitude', 'price'])
-    prices_coordinates_df = access.togpd(df)
-
-    BOXES = 50
-    a, b, c, d = prices_coordinates_df.total_bounds
-
-    # create a grid for UK
-    gdf_grid = gpd.GeoDataFrame(
-        geometry=[
-            shapely.geometry.box(minx, miny, maxx, maxy)
-            for minx, maxx in zip(np.linspace(a, c, BOXES), np.linspace(a, c, BOXES)[1:])
-            for miny, maxy in zip(np.linspace(b, d, BOXES), np.linspace(b, d, BOXES)[1:])
-        ],
-        crs="epsg:4326",
-    )
-
-    # remove grid boxes created outside actual geometry
-    gdf_grid = gdf_grid.sjoin(prices_coordinates_df).drop(columns="index_right")
-
-    # get earthquakes that have occured within one of the grid geometries
-    prices_coordinates_df_temp = prices_coordinates_df.loc[:, ["geometry", "price"]]
-    # get median magnitude of eargquakes in grid
-    gdf_grid = gdf_grid.join(
-        prices_coordinates_df_temp.dissolve(by="index_right", aggfunc="median").drop(columns="geometry")
-    )
-    # how many earthquakes in the grid
-    gdf_grid = gdf_grid.join(
-        prices_coordinates_df_temp.dissolve(by="index_right", aggfunc=lambda d: len(d))
-        .drop(columns="geometry")
-        .rename(columns={"mag": "number"})
-    )
-
-    # drop grids geometries that have no measures and create folium map
-    m = gdf_grid.dropna().explore(column="mag")
-    # for good measure - boundary on map too
-    prices_coordinates_df["geometry"].apply(lambda g: shapely.geometry.MultiLineString([p.exterior for p in g.geoms])).explore(m=m)
 
 def plot_property_type_distribution(year):
-    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    world_gdf.crs = "EPSG:4326"
-    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+    """Plots different property types within given year on the map of UK"""
+    uk_gdf = get_uk_outline()
 
     results = access.run_query_return_results(f"SELECT latitude, longitude, property_type FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
     df = pd.DataFrame(results, columns=['latitude', 'longitude', 'property_type'])
@@ -183,9 +188,8 @@ def plot_property_type_distribution(year):
 
 
 def plot_new_build_distribution(year):
-    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    world_gdf.crs = "EPSG:4326"
-    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+    """Plots new build and old build within given year on the map of UK"""
+    uk_gdf = get_uk_outline()
 
     results = access.run_query_return_results(f"SELECT latitude, longitude, new_build_flag FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
     df = pd.DataFrame(results, columns=['latitude', 'longitude', 'new_build_flag'])
@@ -208,9 +212,8 @@ def plot_new_build_distribution(year):
 
 
 def plot_tenure_type_distribution(year):
-    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    world_gdf.crs = "EPSG:4326"
-    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+    """Plots freehold, lease and other tenure types within given year on the map of UK"""
+    uk_gdf = get_uk_outline()
 
     results = access.run_query_return_results(f"SELECT latitude, longitude, tenure_type FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
     df = pd.DataFrame(results, columns=['latitude', 'longitude', 'tenure_type'])
@@ -244,58 +247,44 @@ def plot_average_price_by_year():
     plt.ylabel('Average Price')
     plt.show()
 
-# def plot_correlation_price_property_type(year):
-#     world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-#     world_gdf.crs = "EPSG:4326"
-#     uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
 
-#     results = access.run_query_return_results(f"SELECT AVG(price), property_type FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31' GROUP BY property_type;")
-#     df = pd.DataFrame(results, columns=['average_price', 'property_type'])
+def plot_num_house_distribution(year):
+    """
+    Groups prices_coordinates_data into boxes, showing the count of property prices within each box
+    """
+    uk_gdf = get_uk_outline()
+
+    prices_coordinates_df = access.togpd(access.get_prices_coordinates_df_by_year(year))
+
+    gdf_grid = split_gdf_into_boxes(prices_coordinates_df)
+
+    merged = gpd.sjoin(prices_coordinates_df, gdf_grid, how='left', op='within')
+    merged['n_houses']=1
+    count_merged = merged.dissolve(by='index_right', aggfunc={"n_houses": "count"})
+    gdf_grid.loc[count_merged.index, 'n_houses'] = count_merged.n_houses.values
+    ax = gdf_grid.plot(column='n_houses', figsize=(12, 8), cmap='viridis', vmax=5000, edgecolor="grey")
+    plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=5000), cmap='viridis'),
+             ax=ax, orientation='vertical')
+    plt.autoscale(False)
+    uk_gdf.to_crs(gdf_grid.crs).plot(ax=ax, color='none', edgecolor='black')
 
 
+def plot_avg_price_distribution(year):
+    """
+    Groups prices_coordinates_data into boxes, showing the average property prices within each box
+    """
+    uk_gdf = get_uk_outline()
 
-#     fig, ax = plt.subplots(figsize=plot.big_figsize)
-#     uk_gdf.plot(ax=ax, color='white', edgecolor='black')
-#     freehold.plot(ax=ax, color='r', alpha=0.05)
-#     lease.plot(ax=ax, color='g', alpha=0.05)
-#     other.plot(ax=ax, color='b', alpha=0.05)
-#     ax.set_xlabel('longitude')
-#     ax.set_ylabel('latitude')
-#     fig.suptitle(f'Tenure Type distribution for {year}') 
-#     plt.tight_layout() 
-#     mlai.write_figure(f'tenure-type-{year}.jpg', directory='./ml')
+    prices_coordinates_df = access.togpd(access.get_prices_coordinates_df_by_year(year))
 
-# def data():
-#     """Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame."""
-#     df = access.data()
-#     raise NotImplementedError
+    gdf_grid = split_gdf_into_boxes(prices_coordinates_df)
 
-# def query(data):
-#     """Request user input for some aspect of the data."""
-#     raise NotImplementedError
-
-# # def view(north, south, east, west, tags):
-# #     """Provide a view of the data that allows the user to verify some aspect of its quality."""
-# #     graph = ox.graph_from_bbox(north, south, east, west)
-# #     # Retrieve nodes and edges
-# #     nodes, edges = ox.graph_to_gdfs(graph)
-# #     area = ox.geocode_to_gdf("United Kingdom")
-# #     fig, ax = plt.subplots(figsize=plot.big_figsize)
-# #     # Plot the footprint
-# #     area.plot(ax=ax, facecolor="white")
-# #     # Plot street edges
-# #     edges.plot(ax=ax, linewidth=1, edgecolor="dimgray")
-# #     ax.set_xlim([west, east])
-# #     ax.set_ylim([south, north])
-# #     ax.set_xlabel("longitude")
-# #     ax.set_ylabel("latitude")
-
-# #     # Plot all POIs
-# #     pois = access.get_pois(north, south, east, west, tags)
-# #     pois.plot(ax=ax, color="blue", alpha=0.7, markersize=10)
-# #     plt.tight_layout()
-# #     mlai.write_figure(directory="./maps", filename="pois.jpg")
-
-# def labelled(data):
-#     """Provide a labelled set of data ready for supervised learning."""
-#     raise NotImplementedError
+    merged = gpd.sjoin(prices_coordinates_df, gdf_grid, how='left', op='within')
+    price_merged = merged.dissolve(by='index_right', aggfunc={"price": "mean"})
+    gdf_grid.loc[price_merged.index, 'price'] = price_merged.price.values
+    gdf_grid['price'] = np.log(gdf_grid['price'])
+    ax = gdf_grid.plot(column='price', figsize=(12, 8), cmap='viridis', vmax=10, edgecolor="grey")
+    plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=10), cmap='viridis'),
+             ax=ax, orientation='vertical')
+    plt.autoscale(False)
+    uk_gdf.to_crs(gdf_grid.crs).plot(ax=ax, color='none', edgecolor='black')

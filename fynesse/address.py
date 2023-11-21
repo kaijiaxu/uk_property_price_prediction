@@ -53,8 +53,9 @@ def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, l
         prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: (opm_gdf.distance(house).min()))
     else:
         # Set distance to max (bounding box distance)
-        prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = bbox_size/2 * 40000/360
+        prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = (bbox_size/2) * (40000/360)
     return prices_coord_gdf_copy
+
 
 def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
     for osm_key in osm_tags:
@@ -68,10 +69,9 @@ def build_design_matrix(df, osm_tags):
     df_copy = gpd.GeoDataFrame(df.copy(deep=True))
     df_copy['new_build'] = df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
     df_copy['freehold'] = df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
-    df_copy['lease'] = df['tenure_type'].apply(lambda x: 1 if x == 'L' else 0)
     df_copy['const'] = 1
 
-    column_names = ['const', 'new_build', 'freehold', 'lease'] 
+    column_names = ['const', 'new_build', 'freehold'] 
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
@@ -81,7 +81,7 @@ def build_design_matrix(df, osm_tags):
 
 def build_prediction_matrix(df, osm_tags):
     df['const'] = 1
-    column_names = ['const', 'new_build', 'freehold', 'lease'] 
+    column_names = ['const', 'new_build', 'freehold'] 
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
@@ -95,10 +95,11 @@ def build_prediction_matrix(df, osm_tags):
 bbox_size = 0.1
 
 osm_tags = {
-    "amenity": ["fast_food", "restaurant", "kindergarten", "school", "bus_station"],
-    "public_transport": ["platform", "station"],
+    "amenity": ["restaurant", "kindergarten", "school", "bus_station"],
+    "public_transport": ["platform"],
     "shop": ["convenience", "supermarket"],
-    "tourism": [True]
+    "tourism": [True],
+    "office": [True]
 }
 
 def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags):
@@ -121,8 +122,6 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     
     # Incorporate features from OSM
     prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
-
-    print(prices_coordinates_data_df)
 
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
@@ -149,15 +148,14 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     # Build design matrix to predict price
     avg_new_build = len(prices_coordinates_data_df[prices_coordinates_data_df['new_build_flag'] == 'Y']) / len(prices_coordinates_data_df)
     avg_tenure_freehold = len(prices_coordinates_data_df[prices_coordinates_data_df['tenure_type'] == 'F']) / len(prices_coordinates_data_df)
-    avg_tenure_lease = len(prices_coordinates_data_df[prices_coordinates_data_df['tenure_type'] == 'L']) / len(prices_coordinates_data_df)
 
-    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold], 'lease': avg_tenure_lease})
+    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold]})
     prediction_df = access.togpd(prediction_df)
     prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     print(prediction_df)
     design_pred = build_prediction_matrix(prediction_df, osm_tags)
 
     pred_price = results.predict(design_pred)
-    print(f"The predicted price for a house at latitude={latitude}, logitude={longitude}, of property type {property_type} on {date} is predicted to be of £{pred_price[0]}.\n")
+    print(f"The predicted price for a house at latitude={latitude}, logitude={longitude}, of property type {property_type} on {date} is predicted to be of £{pred_price[0]:.2f}.\n")
 
     return pred_price[0], r2
