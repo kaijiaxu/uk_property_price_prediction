@@ -104,32 +104,7 @@ def osm_plot(tags):
     ax.set_ylabel('latitude')
     fig.suptitle(f'OSM data for {tag_names}') 
     plt.tight_layout() 
-    mlai.write_figure(f'osm-{tag_names}.jpg', directory='./ml')
-
-
-# def find_correlation_between_osm_tag_and_price(year, osm_tags):
-#     prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_by_year(year))
-#     for osm_key in osm_tags:
-#         for osm_value in osm_tags[osm_key]:
-#             prices_coordinates_data_df = address.num_of_pois(prices_coordinates_data_df, osm_key, osm_value, 0.02)
-
-#     gdf_grid = split_gdf_into_boxes(prices_coordinates_data_df)
-#     merged = gpd.sjoin(prices_coordinates_data_df, gdf_grid, how='left', op='within')
-
-#     prices_coordinates_data_df = prices_coordinates_data_df.drop(['latitude', 'longitude', 'geometry'])  
-
-#     price_merged = merged.dissolve(by='index_right', aggfunc={"price": "mean", 'number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood': "mean"})
-#     print(merged)
-#     gdf_grid.loc[price_merged.index, 'price'] = price_merged.price.values
-
-#     fig, ax = plt.subplots(figsize=plot.big_figsize)
-#     im = ax.matshow(prices_coordinates_data_df.corr())
-#     ax.set_xticklabels(prices_coordinates_data_df.columns, fontsize=14, rotation=45)
-#     ax.set_yticklabels(prices_coordinates_data_df.columns, fontsize=14)
-
-#     fig.colorbar(im, ax=ax)
-
-#     mlai.write_figure(filename="corr-matrix.jpg", directory="./ml")     
+    mlai.write_figure(f'osm-{tag_names}.jpg', directory='./ml')     
 
 
 ### Prices Coordinates Data ###
@@ -236,8 +211,8 @@ def plot_tenure_type_distribution(year):
     mlai.write_figure(f'tenure-type-{year}.jpg', directory='./ml')
 
 
-
 def plot_average_price_by_year():
+    """Plot line graph of average price in a year"""
     results = access.run_query_return_results("SELECT EXTRACT(year FROM date_of_transfer) AS year, AVG(price) AS average_price FROM prices_coordinates_data GROUP BY EXTRACT(year FROM date_of_transfer);")
     df = pd.DataFrame(results, columns=['year', 'average_price'])
     print(df)
@@ -264,27 +239,6 @@ def plot_num_house_distribution(year):
     gdf_grid.loc[count_merged.index, 'n_houses'] = count_merged.n_houses.values
     ax = gdf_grid.plot(column='n_houses', figsize=(12, 8), cmap='viridis', vmax=5000, edgecolor="grey")
     plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=5000), cmap='viridis'),
-             ax=ax, orientation='vertical')
-    plt.autoscale(False)
-    uk_gdf.to_crs(gdf_grid.crs).plot(ax=ax, color='none', edgecolor='black')
-
-
-def plot_avg_price_distribution(year):
-    """
-    Groups prices_coordinates_data into boxes, showing the average property prices within each box
-    """
-    uk_gdf = get_uk_outline()
-
-    prices_coordinates_df = access.togpd(access.get_prices_coordinates_df_by_year(year))
-
-    gdf_grid = split_gdf_into_boxes(prices_coordinates_df)
-
-    merged = gpd.sjoin(prices_coordinates_df, gdf_grid, how='left', op='within')
-    price_merged = merged.dissolve(by='index_right', aggfunc={"price": "mean"})
-    gdf_grid.loc[price_merged.index, 'price'] = price_merged.price.values
-    gdf_grid['log_price'] = np.log(gdf_grid['price'])
-    ax = gdf_grid.plot(column='log_price', figsize=(12, 8), cmap='viridis', vmax=10, edgecolor="grey")
-    plt.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin=0, vmax=10), cmap='viridis'),
              ax=ax, orientation='vertical')
     plt.autoscale(False)
     uk_gdf.to_crs(gdf_grid.crs).plot(ax=ax, color='none', edgecolor='black')

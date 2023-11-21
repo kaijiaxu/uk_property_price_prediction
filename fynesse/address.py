@@ -52,7 +52,7 @@ def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, l
     if len(opm_gdf) != 0:
         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min()))
     else:
-        # Set distance to max (bounding box distance)
+        # Set distance to max -> inverse approaches 0
         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
     return prices_coord_gdf_copy
 
