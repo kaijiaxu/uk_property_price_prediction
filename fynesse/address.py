@@ -43,20 +43,20 @@ def num_of_pois(prices_coord_gdf, osm_key, osm_value, neighbourhood_size):
     return prices_coord_gdf_copy
 
 
-def inverse_min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, longitude):
+def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, longitude):
     prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
     prices_coord_gdf_copy.to_crs(epsg=3857, inplace=True)
     (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
     opm_gdf = access.get_pois(north, south, east, west, {osm_key: osm_value})
     opm_gdf.to_crs(epsg=3857, inplace=True)
-    prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1/ (opm_gdf.distance(house).min()))
+    prices_coord_gdf_copy['min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: (opm_gdf.distance(house).min()))
     return prices_coord_gdf_copy
 
 def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, osm_key, osm_value, neighbourhood_size)
-            prices_coordinates_data_df = inverse_min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
+            prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
     return prices_coordinates_data_df
 
 
@@ -71,7 +71,7 @@ def build_design_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            column_names += ['min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df_copy[column_names]
 
 
@@ -81,7 +81,7 @@ def build_prediction_matrix(df, osm_tags):
     for osm_key in osm_tags:
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            column_names += ['min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df[column_names]
 
 

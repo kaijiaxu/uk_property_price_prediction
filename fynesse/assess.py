@@ -13,6 +13,7 @@ import numpy as np
 import geopandas as gpd
 from geopandas.tools import sjoin
 from IPython.display import display
+import shapely.geometry
 
 """These are the types of import we might expect in this file
 import pandas
@@ -107,6 +108,50 @@ def price_coord_by_year(year):
     _ = interact(price_coord_df,
             year=fixed(year))
     
+
+def plot_price_distribution(year):
+    world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world_gdf.crs = "EPSG:4326"
+    uk_gdf = world_gdf[(world_gdf['name'] == 'United Kingdom')]
+
+    results = access.run_query_return_results(f"SELECT latitude, longitude, price FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31';")
+    df = pd.DataFrame(results, columns=['latitude', 'longitude', 'price'])
+    prices_coordinates_df = access.togpd(df)
+
+    BOXES = 50
+    a, b, c, d = prices_coordinates_df.total_bounds
+
+    # create a grid for UK
+    gdf_grid = gpd.GeoDataFrame(
+        geometry=[
+            shapely.geometry.box(minx, miny, maxx, maxy)
+            for minx, maxx in zip(np.linspace(a, c, BOXES), np.linspace(a, c, BOXES)[1:])
+            for miny, maxy in zip(np.linspace(b, d, BOXES), np.linspace(b, d, BOXES)[1:])
+        ],
+        crs="epsg:4326",
+    )
+
+    # remove grid boxes created outside actual geometry
+    gdf_grid = gdf_grid.sjoin(prices_coordinates_df).drop(columns="index_right")
+
+    # get earthquakes that have occured within one of the grid geometries
+    prices_coordinates_df_temp = prices_coordinates_df.loc[:, ["geometry", "price"]]
+    # get median magnitude of eargquakes in grid
+    gdf_grid = gdf_grid.join(
+        prices_coordinates_df_temp.dissolve(by="index_right", aggfunc="median").drop(columns="geometry")
+    )
+    # how many earthquakes in the grid
+    gdf_grid = gdf_grid.join(
+        prices_coordinates_df_temp.dissolve(by="index_right", aggfunc=lambda d: len(d))
+        .drop(columns="geometry")
+        .rename(columns={"mag": "number"})
+    )
+
+    # drop grids geometries that have no measures and create folium map
+    m = gdf_grid.dropna().explore(column="mag")
+    # for good measure - boundary on map too
+    prices_coordinates_df["geometry"].apply(lambda g: shapely.geometry.MultiLineString([p.exterior for p in g.geoms])).explore(m=m)
+
 def plot_property_type_distribution(year):
     world_gdf = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
     world_gdf.crs = "EPSG:4326"
