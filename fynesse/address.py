@@ -60,10 +60,11 @@ def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, l
 
 
 def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
-    for osm_key in osm_tags:
-        for osm_value in osm_tags[osm_key]:
-            prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, osm_key, osm_value, neighbourhood_size)
-            prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
+    if osm_tags is not None:
+        for osm_key in osm_tags:
+            for osm_value in osm_tags[osm_key]:
+                prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, osm_key, osm_value, neighbourhood_size)
+                prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
     return prices_coordinates_data_df
 
 
@@ -94,22 +95,24 @@ def build_design_matrix(df, osm_tags):
     df['const'] = 1
 
     column_names = ['const', 'new_build', 'freehold'] 
-    for osm_key in osm_tags:
-        for osm_value in osm_tags[osm_key]:
-            column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
-            # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
+    if osm_tags is not None:
+        for osm_key in osm_tags:
+            for osm_value in osm_tags[osm_key]:
+                column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
+                column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
+                # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df[column_names]
 
 
 def build_prediction_matrix(df, osm_tags):
     df['const'] = 1
     column_names = ['const', 'new_build', 'freehold'] 
-    for osm_key in osm_tags:
-        for osm_value in osm_tags[osm_key]:
-            column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-            column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
-            # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
+    if osm_tags is not None:
+        for osm_key in osm_tags:
+            for osm_value in osm_tags[osm_key]:
+                column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
+                column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
+                # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df[column_names]
 
 
