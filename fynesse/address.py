@@ -81,6 +81,9 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
         print("Not enough training data. Try increasing bbox_size.")
         return None
     
+    prices_coordinates_data_df['new_build'] = prices_coordinates_data_df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
+    prices_coordinates_data_df['freehold'] = prices_coordinates_data_df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
+    
     # Incorporate features from OSM
     if osm_tags is not None:
         prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
@@ -88,10 +91,7 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
 
 
 def build_design_matrix(df, osm_tags):
-    df_copy = gpd.GeoDataFrame(df.copy(deep=True))
-    df_copy['new_build'] = df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
-    df_copy['freehold'] = df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
-    df_copy['const'] = 1
+    df['const'] = 1
 
     column_names = ['const', 'new_build', 'freehold'] 
     for osm_key in osm_tags:
@@ -99,7 +99,7 @@ def build_design_matrix(df, osm_tags):
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
             column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
             # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
-    return df_copy[column_names]
+    return df[column_names]
 
 
 def build_prediction_matrix(df, osm_tags):
@@ -147,7 +147,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
     print(f"Size of training set: {len(training_data)}\n")
-    
+
     # 4. Train a linear model on the data set you have created.
     design = build_design_matrix(training_data, osm_tags)
 
