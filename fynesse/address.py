@@ -67,6 +67,25 @@ def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood
     return prices_coordinates_data_df
 
 
+def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size):
+    # 1. Select a bounding box around the housing location in latitude and longitude.
+    (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
+
+    # 2. Select a data range around the prediction date.
+    (date_year, date_month, date_day) = validate_parse_date(date)
+
+    # 3. Use the data ecosystem you have build above to build a training set from the relevant time period and location in the UK. Include appropriate features from OSM to improve the prediction.
+    prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_for_prediction(date_year - 1, date_year + 1, property_type, north, south, east, west))
+
+    if len(prices_coordinates_data_df) < 10: # Ensures testing_data is of at least length 2, so that we get a r2 score
+        print("Not enough training data. Try increasing bbox_size.")
+        return None
+    
+    # Incorporate features from OSM
+    prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
+    return prices_coordinates_data_df
+
+
 def build_design_matrix(df, osm_tags):
     df_copy = gpd.GeoDataFrame(df.copy(deep=True))
     df_copy['new_build'] = df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
@@ -78,7 +97,7 @@ def build_design_matrix(df, osm_tags):
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
             column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
-            column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df_copy[column_names]
 
 
@@ -89,11 +108,19 @@ def build_prediction_matrix(df, osm_tags):
         for osm_value in osm_tags[osm_key]:
             column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
             column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
-            column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
+            # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
     return df[column_names]
 
 
 ### Address functions ###
+
+def correlation(latitude, longitude, date, property_type, bbox_size, osm_key, osm_value, neighbourhood_size):
+    """
+    Print the correlation matrix to help decide features for the model
+    """
+    df = build_df(latitude, longitude, date, property_type, bbox_size, {osm_key: osm_value}, neighbourhood_size)
+    print(df[['price', 'number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood', 'number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood', 'inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]].corr())
+
 
 # Suggested values for bbox_size and osm_tags parameters in predict_price
 bbox_size = 0.1
@@ -111,20 +138,9 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     neighbourhood_size = 0.04
 
     # 1. Select a bounding box around the housing location in latitude and longitude.
-    (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
-
     # 2. Select a data range around the prediction date.
-    (date_year, date_month, date_day) = validate_parse_date(date)
-
     # 3. Use the data ecosystem you have build above to build a training set from the relevant time period and location in the UK. Include appropriate features from OSM to improve the prediction.
-    prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_for_prediction(date_year - 1, date_year + 1, property_type, north, south, east, west))
-
-    if len(prices_coordinates_data_df) < 10: # Ensures testing_data is of at least length 2, so that we get a r2 score
-        print("Not enough training data. Try increasing bbox_size.")
-        return None
-    
-    # Incorporate features from OSM
-    prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
+    prices_coordinates_data_df = build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size)
 
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
