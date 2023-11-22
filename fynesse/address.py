@@ -82,7 +82,8 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
         return None
     
     # Incorporate features from OSM
-    prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
+    if osm_tags is not None:
+        prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     return prices_coordinates_data_df
 
 
@@ -114,12 +115,13 @@ def build_prediction_matrix(df, osm_tags):
 
 ### Address functions ###
 
-def correlation(latitude, longitude, date, property_type, bbox_size, osm_key, osm_value, neighbourhood_size):
+def correlation(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size, column_names):
     """
     Print the correlation matrix to help decide features for the model
+    :param column_names: array of column names for correlation matrix
     """
-    df = build_df(latitude, longitude, date, property_type, bbox_size, {osm_key: osm_value}, neighbourhood_size)
-    print(df[['price', 'number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood', 'number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood', 'inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]].corr())
+    df = build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size)
+    print(df[column_names].corr())
 
 
 # Suggested values for bbox_size and osm_tags parameters in predict_price
@@ -141,10 +143,11 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     # 2. Select a data range around the prediction date.
     # 3. Use the data ecosystem you have build above to build a training set from the relevant time period and location in the UK. Include appropriate features from OSM to improve the prediction.
     prices_coordinates_data_df = build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size)
-
+    
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
-
+    print(f"Size of training set: {len(training_data)}\n")
+    
     # 4. Train a linear model on the data set you have created.
     design = build_design_matrix(training_data, osm_tags)
 
@@ -171,7 +174,6 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
     prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold]})
     prediction_df = access.togpd(prediction_df)
     prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
-    print(prediction_df)
     design_pred = build_prediction_matrix(prediction_df, osm_tags)
 
     pred_price = results.predict(design_pred)
