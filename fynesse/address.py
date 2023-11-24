@@ -36,40 +36,6 @@ def validate_parse_date(date_text):
     dt = datetime.strptime(date_text, '%Y-%m-%d')
     return (dt.year, dt.month, dt.day)
 
-
-# def num_of_pois(prices_coord_gdf, osm_key, osm_value, neighbourhood_size):
-#     """
-#     Adds a column to `prices_coord_gdf` stating the number of POIs with the specific `tag` in OSM, within the `neighbourhood_size` from the given `latitude` and `longitude`.
-#     """
-#     prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
-#     prices_coord_gdf_copy['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood'] = prices_coord_gdf_copy['geometry'].apply(lambda house: len((access.get_pois(house.y + neighbourhood_size/2, house.y - neighbourhood_size/2, house.x + neighbourhood_size/2, house.x - neighbourhood_size/2, {osm_key: osm_value})).notna()))
-#     return prices_coord_gdf_copy
-
-
-# def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, longitude):
-#     prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
-#     prices_coord_gdf_copy.to_crs(epsg=3857, inplace=True)
-#     (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
-#     opm_gdf = access.get_pois(north, south, east, west, {osm_key: osm_value})
-#     opm_gdf.to_crs(epsg=3857, inplace=True)
-#     if len(opm_gdf) != 0:
-#         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min()))
-#         prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min())**2)
-#     else:
-#         # Set distance to max -> inverse approaches 0
-#         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
-#         prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
-#     return prices_coord_gdf_copy
-
-
-# def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
-#     if osm_tags is not None:
-#         for osm_key in osm_tags:
-#             for osm_value in osm_tags[osm_key]:
-#                 prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, osm_key, osm_value, neighbourhood_size)
-#                 prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
-#     return prices_coordinates_data_df
-
 def create_KDTree(gdf):
     """
     Create a KDTree from the given geodataframe, which speeds up the data processing and computation for features in consideration.
@@ -122,8 +88,8 @@ def calculate_min_dist(pois_tree, coordinates, bbox_size):
     :param bbox_size: used to generate the maximum distance
     """
     if pois_tree is None:
-        return bbox_size * 40,000/360
-    return closest_osm_features(pois_tree, coordinates, top_k=[1])[0][0] * 40,000/360
+        return bbox_size * 40000/360
+    return closest_osm_features(pois_tree, coordinates, top_k=[1])[0][0] * 40000/360
 
 
 def min_dist_to_poi(prices_coord_gdf, pois_tree, osm_tag_name, bbox_size):
