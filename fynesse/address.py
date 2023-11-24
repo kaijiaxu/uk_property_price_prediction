@@ -89,7 +89,10 @@ def calculate_min_dist(pois_tree, coordinates, bbox_size):
     """
     if pois_tree is None:
         return bbox_size * 40000/360
-    return closest_osm_features(pois_tree, coordinates, top_k=[1])[0][0] * 40000/360
+    results = closest_osm_features(pois_tree, coordinates, top_k=[1])
+    if len(results) == 0:
+        return bbox_size * 40000/360
+    return results[0][0] * 40000/360
 
 
 def min_dist_to_poi(prices_coord_gdf, pois_tree, osm_tag_name, bbox_size):
