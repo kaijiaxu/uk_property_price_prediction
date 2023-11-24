@@ -307,7 +307,7 @@ def min_dist_to_poi(prices_coord_gdf, pois_tree, osm_tag_name):
     :param pois_tree: KDTree of POIs
     :param tag_name: used to generate the column name
     """
-    prices_coord_gdf['min distance to ' + osm_tag_name] = prices_coord_gdf['geometry'].apply(lambda house: closest_osm_features(pois_tree, (house.y, house.x), top_k=1))
+    prices_coord_gdf['min distance to ' + osm_tag_name] = prices_coord_gdf['geometry'].apply(lambda house: closest_osm_features(pois_tree, (house.y, house.x), top_k=1)[0] * 40,000/360)
     return prices_coord_gdf
 
 
