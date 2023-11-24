@@ -1,6 +1,7 @@
 # This file contains code for suporting addressing questions in the data
 from .config import *
 from . import access
+from . import assess
 
 from datetime import datetime
 import numpy as np
@@ -34,38 +35,38 @@ def validate_parse_date(date_text):
     return (dt.year, dt.month, dt.day)
 
 
-def num_of_pois(prices_coord_gdf, osm_key, osm_value, neighbourhood_size):
-    """
-    Adds a column to `prices_coord_gdf` stating the number of POIs with the specific `tag` in OSM, within the `neighbourhood_size` from the given `latitude` and `longitude`.
-    """
-    prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
-    prices_coord_gdf_copy['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood'] = prices_coord_gdf_copy['geometry'].apply(lambda house: len((access.get_pois(house.y + neighbourhood_size/2, house.y - neighbourhood_size/2, house.x + neighbourhood_size/2, house.x - neighbourhood_size/2, {osm_key: osm_value})).notna()))
-    return prices_coord_gdf_copy
+# def num_of_pois(prices_coord_gdf, osm_key, osm_value, neighbourhood_size):
+#     """
+#     Adds a column to `prices_coord_gdf` stating the number of POIs with the specific `tag` in OSM, within the `neighbourhood_size` from the given `latitude` and `longitude`.
+#     """
+#     prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
+#     prices_coord_gdf_copy['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood'] = prices_coord_gdf_copy['geometry'].apply(lambda house: len((access.get_pois(house.y + neighbourhood_size/2, house.y - neighbourhood_size/2, house.x + neighbourhood_size/2, house.x - neighbourhood_size/2, {osm_key: osm_value})).notna()))
+#     return prices_coord_gdf_copy
 
 
-def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, longitude):
-    prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
-    prices_coord_gdf_copy.to_crs(epsg=3857, inplace=True)
-    (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
-    opm_gdf = access.get_pois(north, south, east, west, {osm_key: osm_value})
-    opm_gdf.to_crs(epsg=3857, inplace=True)
-    if len(opm_gdf) != 0:
-        prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min()))
-        prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min())**2)
-    else:
-        # Set distance to max -> inverse approaches 0
-        prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
-        prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
-    return prices_coord_gdf_copy
+# def min_dist_to_poi(prices_coord_gdf, osm_key, osm_value, bbox_size, latitude, longitude):
+#     prices_coord_gdf_copy = gpd.GeoDataFrame(prices_coord_gdf.copy(deep=True))
+#     prices_coord_gdf_copy.to_crs(epsg=3857, inplace=True)
+#     (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
+#     opm_gdf = access.get_pois(north, south, east, west, {osm_key: osm_value})
+#     opm_gdf.to_crs(epsg=3857, inplace=True)
+#     if len(opm_gdf) != 0:
+#         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min()))
+#         prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = prices_coord_gdf_copy['geometry'].apply(lambda house: 1 / (opm_gdf.distance(house).min())**2)
+#     else:
+#         # Set distance to max -> inverse approaches 0
+#         prices_coord_gdf_copy['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
+#         prices_coord_gdf_copy['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)] = 0
+#     return prices_coord_gdf_copy
 
 
-def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
-    if osm_tags is not None:
-        for osm_key in osm_tags:
-            for osm_value in osm_tags[osm_key]:
-                prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, osm_key, osm_value, neighbourhood_size)
-                prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
-    return prices_coordinates_data_df
+# def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude):
+#     if osm_tags is not None:
+#         for osm_key in osm_tags:
+#             for osm_value in osm_tags[osm_key]:
+#                 prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, osm_key, osm_value, neighbourhood_size)
+#                 prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, osm_key, osm_value, bbox_size, latitude, longitude)
+#     return prices_coordinates_data_df
 
 
 def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size):
@@ -87,32 +88,22 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
     
     # Incorporate features from OSM
     if osm_tags is not None:
-        prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
+        prices_coordinates_data_df = assess.generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     return prices_coordinates_data_df
 
 
 def build_design_matrix(df, osm_tags):
-    df['const'] = 1
-
-    column_names = ['const', 'new_build', 'freehold'] 
-    if osm_tags is not None:
-        for osm_key in osm_tags:
-            for osm_value in osm_tags[osm_key]:
-                column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-                column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
-                # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
-    return df[column_names]
-
-
-def build_prediction_matrix(df, osm_tags):
+    """
+    Builds the design matrix for the model
+    """
     df['const'] = 1
     column_names = ['const', 'new_build', 'freehold'] 
     if osm_tags is not None:
         for osm_key in osm_tags:
             for osm_value in osm_tags[osm_key]:
-                column_names += ['number of ' + str(osm_key) + '-' + str(osm_value) + ' in neighbourhood']
-                column_names += ['inverse of min distance to ' + str(osm_key) + '-' + str(osm_value)]
-                # column_names += ['inverse of squared min distance to ' + str(osm_key) + '-' + str(osm_value)]
+                osm_tag_name = str(osm_key) + '-' + str(osm_value)
+                column_names += ['number of ' + osm_tag_name + ' in neighbourhood']
+                column_names += ['min distance to ' + osm_tag_name]
     return df[column_names]
 
 
@@ -127,7 +118,10 @@ def correlation(latitude, longitude, date, property_type, bbox_size, osm_tags, n
     print(df[column_names].corr())
 
 
-# Suggested values for bbox_size and osm_tags parameters in predict_price
+# Example values for bbox_size and osm_tags parameters in predict_price
+
+neighbourhood_size = 0.04
+
 bbox_size = 0.1
 
 osm_tags = {
@@ -137,10 +131,8 @@ osm_tags = {
     "office": [True]
 }
 
-def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags):
+def predict_price(latitude, longitude, date, property_type, bbox_size, neighbourhood_size, osm_tags):
     """Price prediction for UK housing."""
-    # Bounding box size for calculating OSM features 
-    neighbourhood_size = 0.04
 
     # 1. Select a bounding box around the housing location in latitude and longitude.
     # 2. Select a data range around the prediction date.
@@ -176,8 +168,8 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, osm_tags)
 
     prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold]})
     prediction_df = access.togpd(prediction_df)
-    prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
-    design_pred = build_prediction_matrix(prediction_df, osm_tags)
+    prediction_df = assess.generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
+    design_pred = build_design_matrix(prediction_df, osm_tags)
 
     pred_price = results.predict(design_pred)
     print(f"The predicted price for a house at latitude={latitude}, logitude={longitude}, of property type {property_type} on {date} is predicted to be of £{pred_price[0]:.2f}.\n")

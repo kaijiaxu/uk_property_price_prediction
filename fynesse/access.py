@@ -7,6 +7,8 @@ import pandas as pd
 import geopandas as gpd
 import osmnx as ox
 import csv
+from shapely.geometry.polygon import Polygon
+from shapely.geometry.multipolygon import MultiPolygon
 
 """These are the types of import we might expect in this file
 import httplib2
@@ -117,7 +119,7 @@ def load_ppdata_csvs(from_year, to_year):
 
 def create_pp_data():
     """
-    Create the schema for pp_data, including adding db_id.
+    Create the schema for pp_data, including adding db_id
     """
     schema = ["CREATE TABLE IF NOT EXISTS `pp_data`",
             "(`transaction_unique_identifier` tinytext COLLATE utf8_bin NOT NULL,",
@@ -149,7 +151,7 @@ def create_pp_data():
 
 def create_postcode_data():
     """
-    Create the schema for postcode_data, including adding db_id.
+    Create the schema for postcode_data, including adding db_id
     """
     schema = ["CREATE TABLE IF NOT EXISTS `postcode_data`",
               "(`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
@@ -182,13 +184,13 @@ def create_postcode_data():
 
 def join_on_the_fly(min_year, max_year, property_type, north, south, east, west):
     """
-    Join by starting letter of postcode, save results into a csv
+    Return a pandas dataframe after joining on the fly based on the date_of_transfer, property_type, and bounding box
     """
     # For slightly better readability, join_query was separated:
     join_query = [
         "SELECT pp_data.`price`, pp_data.`date_of_transfer`, pp_data.`postcode`, pp_data.`property_type`, pp_data.`new_build_flag`, pp_data.`tenure_type`, pp_data.`locality`, pp_data.`town_city`, pp_data.`district`, pp_data.`county`, postcode_data.`country`, postcode_data.`latitude`, postcode_data.`longitude`, pp_data.`db_id` FROM pp_data",
         "INNER JOIN postcode_data ON pp_data.`postcode` = postcode_data.`postcode`",
-        f"WHERE pp_data.`property_type` = '{property_type}' AND pp_data.`date_of_transfer` >= '{min_year}-01-01' AND pp_data.`date_of_transfer` <= '{max_year}-12-31' AND postcode_data.`latitude` <= {north} AND postcode_data.`longitude` >= {west} AND postcode_data.`longitude` <= {east}"]
+        f"WHERE pp_data.`property_type` = '{property_type}' AND pp_data.`date_of_transfer` >= '{min_year}-01-01' AND pp_data.`date_of_transfer` <= '{max_year}-12-31' AND postcode_data.`latitude` <= {north} AND postcode_data.`latitude` >= {south} AND postcode_data.`longitude` >= {west} AND postcode_data.`longitude` <= {east}"]
     join_query = " ".join(join_query)
     results = run_query_return_results(join_query)
     df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
@@ -225,7 +227,7 @@ def create_indices():
 
 def join_one_year(year):
     """
-    Join by year, save results into a csv
+    Join `pp_data` and `postcode_data` by year, and save the results into a csv
     """
     # For slightly better readability, join_query was separated:
     join_query = [
@@ -244,7 +246,7 @@ def join_one_year(year):
 
 def create_prices_coordinates_data():
     """
-    Create the schema for prices_coordinates_data.
+    Create the schema for prices_coordinates_data
     """
     schema = ["CREATE TABLE IF NOT EXISTS `prices_coordinates_data`",
               "(`price` int(10) unsigned NOT NULL,",
@@ -268,18 +270,27 @@ def create_prices_coordinates_data():
 
 
 def get_prices_coordinates_df_by_coordinates(north, south, east, west):
+    """
+    Return a pandas dataframe of `prices_coordinates_data` filtered by a bounding box
+    """
     sql_query = f"SELECT price, latitude, longitude FROM prices_coordinates_data WHERE latitude >= {south} AND latitude <= {north} AND longitude >= {west} AND longitude <= {east}"
     prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query), columns=['price', 'latitude', 'longitude'])
     return prices_coordinates_df
 
 
 def get_prices_coordinates_df_by_year(year):
+    """
+    Return a pandas dataframe of `prices_coordinates_data` filtered by date_of_transfer
+    """
     sql_query = f"SELECT price, latitude, longitude FROM prices_coordinates_data WHERE date_of_transfer >= '{year}-01-01' AND date_of_transfer <= '{year}-12-31'"
     prices_coordinates_df = pd.DataFrame(run_query_return_results(sql_query), columns=['price', 'latitude', 'longitude'])
     return prices_coordinates_df
 
 
 def get_prices_coordinates_df_for_prediction(min_year, max_year, property_type, north, south, east, west):
+    """
+    Return a pandas dataframe of `prices_coordinates_data` filtered by date_of_transfer, property_type, and a bounding box
+    """
     sql_query = f"SELECT * FROM prices_coordinates_data WHERE `property_type` = '{property_type}' AND `date_of_transfer` >= '{min_year}-01-01' AND `date_of_transfer` <= '{max_year}-12-31' AND `latitude` >= {south} AND `latitude` <= {north} AND `longitude` >= {west} AND `longitude` <= {east}"
     results = run_query_return_results(sql_query)
     df = pd.DataFrame(results, columns=['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude', 'db_id'])
@@ -288,7 +299,7 @@ def get_prices_coordinates_df_for_prediction(min_year, max_year, property_type, 
 
 def create_indices_prices_coordinates():
     """
-    Index the prices_coordinates_data table.
+    Index the prices_coordinates_data table
     """
     query = [
         "CREATE INDEX IF NOT EXISTS pc_price ON prices_coordinates_data (price);",
@@ -301,18 +312,31 @@ def create_indices_prices_coordinates():
 ### Open Street Map data ###
 
 def get_pois(north, south, east, west, tags):
-  """Returns points of interest based on bounding box and tags"""
+  """
+  Returns points of interest based on bounding box and tags
+  """
   pois_df = gpd.GeoDataFrame(columns=['geometry'], geometry='geometry')
   pois_df.crs = "EPSG:4326"
   try:
     pois_df = ox.features_from_bbox(north, south, east, west, tags)
+    # Convert Polygons to Points
+    pois_df['geometry'] = pois_df['geometry'].apply(
+        lambda x: x.centroid if type(x) == Polygon else (
+        x.centroid if type(x) == MultiPolygon else x)
+    )
     return pois_df
   except:
-    # print(f'No data available from OSM for tags {tags.items()} within given bounding box.')
     return pois_df
 
 
 def get_bounding_box(latitude, longitude, box_height, box_width):
+  """
+  Return edges of the bounding box based on the centre location, box height, and box width.
+  :param latitude: latitude of centre point
+  :param longitude: longitude of centre point
+  :param box_height: total bounding box height
+  :param box_width: total bounding box width
+  """
   north = latitude + box_height/2
   south = latitude - box_height/2
   west = longitude - box_width/2
@@ -321,6 +345,9 @@ def get_bounding_box(latitude, longitude, box_height, box_width):
 
 
 def togpd(df):
+    """
+    Convert the given pandas dataframe to a geopandas dataframe 
+    """
     geometry = gpd.points_from_xy(df.longitude, df.latitude)
     df = gpd.GeoDataFrame(df, geometry=geometry)
     df.crs = "EPSG:4326"
