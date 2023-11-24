@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 from scipy import spatial
 from scipy.spatial import KDTree
+from sklearn.decomposition import PCA
 
 """# Here are some of the imports we might expect 
 import sklearn.model_selection  as ms
@@ -232,3 +233,16 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, neighbour
     print(f"The predicted price for a house at latitude={latitude}, logitude={longitude}, of property type {property_type} on {date} is predicted to be of £{pred_price[0]:.2f}.\n")
 
     return pred_price[0], r2
+
+
+def pca_analysis(design_matrix, n_components):
+    """
+    Perform PCA analysis
+    """
+    X = design_matrix - design_matrix.mean(axis=0)
+    pca = PCA(n_components=n_components)
+    pca.fit_transform(X)
+    print("PCA components: \n")
+    print(pca.components_)
+    print("Percentage of variance explained by selected components: \n")
+    print(sum(pca.explained_variance_ratio_))
