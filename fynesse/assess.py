@@ -16,8 +16,6 @@ from geopandas.tools import sjoin
 from IPython.display import display
 import shapely.geometry
 import matplotlib as mpl
-from scipy import spatial
-from scipy.spatial import KDTree
 
 """These are the types of import we might expect in this file
 import pandas

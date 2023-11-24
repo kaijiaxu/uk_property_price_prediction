@@ -11,6 +11,8 @@ import statsmodels.api as sm
 from statsmodels.api import add_constant
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
+from scipy import spatial
+from scipy.spatial import KDTree
 
 """# Here are some of the imports we might expect 
 import sklearn.model_selection  as ms
@@ -199,6 +201,9 @@ osm_tags = {
 
 def predict_price(latitude, longitude, date, property_type, bbox_size, neighbourhood_size, osm_tags):
     """Price prediction for UK housing."""
+
+    if bbox_size < neighbourhood_size:
+        raise ValueError("Please input a neighbourhood size that's smaller than or equal to bbox_size.")
 
     # 1. Select a bounding box around the housing location in latitude and longitude.
     # 2. Select a data range around the prediction date.
