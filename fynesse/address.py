@@ -156,7 +156,7 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
     
     # Incorporate features from OSM
     if osm_tags is not None:
-        prices_coordinates_data_df = assess.generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
+        prices_coordinates_data_df = generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     return prices_coordinates_data_df
 
 
@@ -239,7 +239,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, neighbour
 
     prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold]})
     prediction_df = access.togpd(prediction_df)
-    prediction_df = assess.generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
+    prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     design_pred = build_design_matrix(prediction_df, osm_tags)
 
     pred_price = results.predict(design_pred)
