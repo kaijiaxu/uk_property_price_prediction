@@ -319,11 +319,8 @@ def get_pois(north, south, east, west, tags):
   pois_df.crs = "EPSG:4326"
   try:
     pois_df = ox.features_from_bbox(north, south, east, west, tags)
-    # Convert Polygons to Points
-    pois_df['geometry'] = pois_df['geometry'].apply(
-        lambda x: x.centroid if type(x) == Polygon else (
-        x.centroid if type(x) == MultiPolygon else x)
-    )
+    # Convert Polygons, etc. to Points
+    pois_df['geometry'] = pois_df['geometry'].apply(lambda x: x.centroid)
     return pois_df
   except:
     return pois_df
