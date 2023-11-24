@@ -74,6 +74,8 @@ def create_KDTree(gdf):
     """
     Create a KDTree from the given geodataframe, which speeds up the data processing and computation for features in consideration.
     """
+    if len(gdf) == 0:
+        return None
     # Convert geometry into a coordinates array
     longitude = gdf.geometry.apply(lambda x: x.x).values
     latitude = gdf.geometry.apply(lambda x: x.y).values
@@ -91,6 +93,8 @@ def closest_osm_features(tree, coordinates, top_k=[50], max_distance=0.2):
     :param top_k: maximum number of POIs we want to return (in a list -- to prevent special case of top_k = 1)
     :param max_distance: maximum distance of POI from the point we are interested in
     """
+    if tree is None:
+        return []
     results = tree.query((coordinates), k=top_k, distance_upper_bound=max_distance)
     zipped_results = list(zip(results[0], results[1]))
     # Removes missing neighbours (number of neighbours < top_k), which have infite distances
@@ -110,14 +114,27 @@ def num_of_pois(prices_coord_gdf, pois_tree, neighbourhood_size, tag_name):
     return prices_coord_gdf
 
 
-def min_dist_to_poi(prices_coord_gdf, pois_tree, osm_tag_name):
+def calculate_min_dist(pois_tree, coordinates, bbox_size):
+    """
+    Compute the minimum distance from coordinates to POIs
+    :param pois_tree: KDTree of POIs
+    :param coordinates: coordinates of the reference point
+    :param bbox_size: used to generate the maximum distance
+    """
+    if pois_tree is None:
+        return bbox_size * 40,000/360
+    return closest_osm_features(pois_tree, coordinates, top_k=1) * 40,000/360
+
+
+def min_dist_to_poi(prices_coord_gdf, pois_tree, osm_tag_name, bbox_size):
     """
     Adds a column to `prices_coord_gdf` stating the minimum distance to the specific `tag` in OSM, from the given `latitude` and `longitude`.
     :param prices_coord_gdf: the geopandas dataframe to append the column to
     :param pois_tree: KDTree of POIs
     :param tag_name: used to generate the column name
+    :param bbox_size: used to generate the maximum distance
     """
-    prices_coord_gdf['min distance to ' + osm_tag_name] = prices_coord_gdf['geometry'].apply(lambda house: closest_osm_features(pois_tree, (house.y, house.x), top_k=[1])[0][0] * 40,000/360)
+    prices_coord_gdf['min distance to ' + osm_tag_name] = prices_coord_gdf['geometry'].apply(lambda house: calculate_min_dist(pois_tree, (house.y, house.x), bbox_size))
     return prices_coord_gdf
 
 
@@ -133,7 +150,7 @@ def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood
                 pois_tree = create_KDTree(pois_df)
                 osm_tag_name = str(osm_key) + '-' + str(osm_value)
                 prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, pois_tree, neighbourhood_size, osm_tag_name)
-                prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, pois_tree, osm_tag_name)
+                prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, pois_tree, osm_tag_name, bbox_size)
     return prices_coordinates_data_df
 
 
