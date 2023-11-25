@@ -153,7 +153,7 @@ def build_design_matrix(df, osm_tags):
     Builds the design matrix for the model
     """
     df['const'] = 1
-    column_names = ['const', 'new_build', 'freehold', 'num_of_year', 'num_of_months'] 
+    column_names = ['const', 'new_build', 'freehold', 'num_of_months'] 
     if osm_tags is not None:
         for osm_key in osm_tags:
             for osm_value in osm_tags[osm_key]:
