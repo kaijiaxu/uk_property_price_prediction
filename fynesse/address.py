@@ -124,7 +124,7 @@ def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood
     return prices_coordinates_data_df
 
 
-def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size):
+def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size, date_range=1):
     # 1. Select a bounding box around the housing location in latitude and longitude.
     (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
 
@@ -132,14 +132,16 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
     (date_year, date_month, date_day) = validate_parse_date(date)
 
     # 3. Use the data ecosystem you have build above to build a training set from the relevant time period and location in the UK. Include appropriate features from OSM to improve the prediction.
-    prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_for_prediction(date_year - 1, date_year + 1, property_type, north, south, east, west))
+    prices_coordinates_data_df = access.togpd(access.get_prices_coordinates_df_for_prediction(date_year - date_range, date_year + date_range, property_type, north, south, east, west))
 
     if len(prices_coordinates_data_df) < 10: # Ensures testing_data is of at least length 2, so that we get a r2 score
-        print("Not enough training data. Try increasing bbox_size.")
+        print("Not enough training data. Try increasing bbox_size or date_range.")
         return None
     
     prices_coordinates_data_df['new_build'] = prices_coordinates_data_df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
     prices_coordinates_data_df['freehold'] = prices_coordinates_data_df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
+    prices_coordinates_data_df['num_of_year'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: validate_parse_date(x)[0] - 1995)
+    prices_coordinates_data_df['num_of_month'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: validate_parse_date(x)[1])
     
     # Incorporate features from OSM
     if osm_tags is not None:
@@ -152,7 +154,7 @@ def build_design_matrix(df, osm_tags):
     Builds the design matrix for the model
     """
     df['const'] = 1
-    column_names = ['const', 'new_build', 'freehold'] 
+    column_names = ['const', 'new_build', 'freehold', 'num_of_year', 'num_of_month'] 
     if osm_tags is not None:
         for osm_key in osm_tags:
             for osm_value in osm_tags[osm_key]:
@@ -177,16 +179,16 @@ def correlation(latitude, longitude, date, property_type, bbox_size, osm_tags, n
 
 neighbourhood_size = 0.04
 
-bbox_size = 0.1
+bbox_size = 0.5
 
 osm_tags = {
     "amenity": ["restaurant", "kindergarten", "school", "bus_station"],
-    "public_transport": ["platform"],
+    "public_transport": ["platform", "stop_position"],
     "shop": ["convenience", "supermarket"],
     "office": [True]
 }
 
-def predict_price(latitude, longitude, date, property_type, bbox_size, neighbourhood_size, osm_tags):
+def predict_price(latitude, longitude, date, property_type, bbox_size=bbox_size, neighbourhood_size=neighbourhood_size, osm_tags=osm_tags, date_range=1):
     """Price prediction for UK housing."""
 
     if bbox_size < neighbourhood_size:
@@ -195,7 +197,10 @@ def predict_price(latitude, longitude, date, property_type, bbox_size, neighbour
     # 1. Select a bounding box around the housing location in latitude and longitude.
     # 2. Select a data range around the prediction date.
     # 3. Use the data ecosystem you have build above to build a training set from the relevant time period and location in the UK. Include appropriate features from OSM to improve the prediction.
-    prices_coordinates_data_df = build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size)
+    prices_coordinates_data_df = build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neighbourhood_size, date_range)
+
+    if prices_coordinates_data_df is None:
+        return None
     
     # Split data into training and validation set
     training_data, testing_data = train_test_split(prices_coordinates_data_df, test_size=0.2)
