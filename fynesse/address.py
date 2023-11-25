@@ -193,6 +193,8 @@ def predict_price(latitude, longitude, date, property_type, bbox_size=bbox_size,
 
     if bbox_size < neighbourhood_size:
         raise ValueError("Please input a neighbourhood size that's smaller than or equal to bbox_size.")
+    
+    (date_year, date_month, date_day) = validate_parse_date(date)
 
     # 1. Select a bounding box around the housing location in latitude and longitude.
     # 2. Select a data range around the prediction date.
@@ -229,7 +231,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size=bbox_size,
     avg_new_build = len(prices_coordinates_data_df[prices_coordinates_data_df['new_build_flag'] == 'Y']) / len(prices_coordinates_data_df)
     avg_tenure_freehold = len(prices_coordinates_data_df[prices_coordinates_data_df['tenure_type'] == 'F']) / len(prices_coordinates_data_df)
 
-    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold]})
+    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold], 'num_of_year': date_year, 'num_of_month': date_month})
     prediction_df = access.togpd(prediction_df)
     prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     design_pred = build_design_matrix(prediction_df, osm_tags)
