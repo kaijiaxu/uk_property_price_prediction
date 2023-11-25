@@ -140,8 +140,7 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
     
     prices_coordinates_data_df['new_build'] = prices_coordinates_data_df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
     prices_coordinates_data_df['freehold'] = prices_coordinates_data_df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
-    prices_coordinates_data_df['num_of_year'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: x.year - 1995)
-    prices_coordinates_data_df['num_of_month'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: x.month)
+    prices_coordinates_data_df['num_of_months'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: (x.year - date_year) * 12 + x.month)
     
     # Incorporate features from OSM
     if osm_tags is not None:
@@ -154,7 +153,7 @@ def build_design_matrix(df, osm_tags):
     Builds the design matrix for the model
     """
     df['const'] = 1
-    column_names = ['const', 'new_build', 'freehold', 'num_of_year', 'num_of_month'] 
+    column_names = ['const', 'new_build', 'freehold', 'num_of_year', 'num_of_months'] 
     if osm_tags is not None:
         for osm_key in osm_tags:
             for osm_value in osm_tags[osm_key]:
@@ -231,7 +230,7 @@ def predict_price(latitude, longitude, date, property_type, bbox_size=bbox_size,
     avg_new_build = len(prices_coordinates_data_df[prices_coordinates_data_df['new_build_flag'] == 'Y']) / len(prices_coordinates_data_df)
     avg_tenure_freehold = len(prices_coordinates_data_df[prices_coordinates_data_df['tenure_type'] == 'F']) / len(prices_coordinates_data_df)
 
-    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold], 'num_of_year': date_year-1995, 'num_of_month': date_month})
+    prediction_df = pd.DataFrame({'latitude': [latitude], 'longitude': [longitude], 'new_build': [avg_new_build], 'freehold': [avg_tenure_freehold], 'num_of_months': date_month})
     prediction_df = access.togpd(prediction_df)
     prediction_df = generate_all_osm_columns(prediction_df, osm_tags, neighbourhood_size, bbox_size, latitude, longitude)
     design_pred = build_design_matrix(prediction_df, osm_tags)
