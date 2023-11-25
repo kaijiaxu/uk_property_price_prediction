@@ -140,8 +140,8 @@ def build_df(latitude, longitude, date, property_type, bbox_size, osm_tags, neig
     
     prices_coordinates_data_df['new_build'] = prices_coordinates_data_df['new_build_flag'].apply(lambda x: 1 if x == 'Y' else 0)
     prices_coordinates_data_df['freehold'] = prices_coordinates_data_df['tenure_type'].apply(lambda x: 1 if x == 'F' else 0)
-    prices_coordinates_data_df['num_of_year'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: validate_parse_date(x)[0] - 1995)
-    prices_coordinates_data_df['num_of_month'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: validate_parse_date(x)[1])
+    prices_coordinates_data_df['num_of_year'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: x.year - 1995)
+    prices_coordinates_data_df['num_of_month'] = prices_coordinates_data_df['date_of_transfer'].apply(lambda x: x.month)
     
     # Incorporate features from OSM
     if osm_tags is not None:
