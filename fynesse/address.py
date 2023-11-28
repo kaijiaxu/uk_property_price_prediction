@@ -83,15 +83,16 @@ def num_of_pois(prices_coord_gdf, pois_tree, neighbourhood_size, tag_name):
 
 def calculate_min_dist(pois_tree, coordinates, bbox_size):
     """
-    Compute the minimum distance from coordinates to POIs
+    Compute the minimum distance (in km) from coordinates to POIs
     :param pois_tree: KDTree of POIs
     :param coordinates: coordinates of the reference point
     :param bbox_size: used to generate the maximum distance
     """
+    # If the tree (i.e. dataframe) is empty, we take the min dist to be distance to the edge of the bounding box.
     if pois_tree is None:
         return bbox_size * 40000/360
     results = closest_osm_features(pois_tree, coordinates, top_k=[1])
-    if len(results) == 0:
+    if len(results) == 0: # To prevent unexpected errors
         return bbox_size * 40000/360
     return results[0][0] * 40000/360
 
@@ -247,5 +248,6 @@ def pca_analysis(design_matrix, n_components):
     pca.fit_transform(X)
     print("PCA components: \n")
     print(pca.components_)
+    print("\n")
     print("Percentage of variance explained by selected components: \n")
     print(sum(pca.explained_variance_ratio_))
