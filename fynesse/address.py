@@ -114,13 +114,11 @@ def generate_all_osm_columns(prices_coordinates_data_df, osm_tags, neighbourhood
     """
     if osm_tags is not None:
         for osm_key in osm_tags:
-            for osm_value in osm_tags[osm_key]:
-                (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
-                pois_df = access.get_pois(north, south, east, west, {osm_key: osm_value})
-                pois_tree = create_KDTree(pois_df)
-                osm_tag_name = str(osm_key) + '-' + str(osm_value)
-                prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, pois_tree, neighbourhood_size, osm_tag_name)
-                prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, pois_tree, osm_tag_name, bbox_size)
+            (north, south, east, west) = access.get_bounding_box(latitude, longitude, bbox_size, bbox_size)
+            pois_df = access.get_pois(north, south, east, west, {osm_key: osm_tags[osm_key]})
+            pois_tree = create_KDTree(pois_df)
+            prices_coordinates_data_df = num_of_pois(prices_coordinates_data_df, pois_tree, neighbourhood_size, osm_key)
+            prices_coordinates_data_df = min_dist_to_poi(prices_coordinates_data_df, pois_tree, osm_key, bbox_size)
     return prices_coordinates_data_df
 
 
@@ -156,10 +154,8 @@ def build_design_matrix(df, osm_tags):
     column_names = ['const', 'new_build', 'freehold', 'num_of_months'] 
     if osm_tags is not None:
         for osm_key in osm_tags:
-            for osm_value in osm_tags[osm_key]:
-                osm_tag_name = str(osm_key) + '-' + str(osm_value)
-                column_names += ['number of ' + osm_tag_name + ' in neighbourhood']
-                column_names += ['min distance to ' + osm_tag_name]
+            column_names += ['number of ' + osm_key + ' in neighbourhood']
+            column_names += ['min distance to ' + osm_key]
     return df[column_names]
 
 
@@ -181,10 +177,10 @@ neighbourhood_size = 0.04
 bbox_size = 0.5
 
 osm_tags = {
-    "amenity": ["restaurant", "kindergarten", "school", "bus_station"],
-    "public_transport": ["platform", "stop_position"],
-    "shop": ["convenience", "supermarket"],
-    "office": [True]
+    "shop": ["supermarket", "convenience"], 
+    "office": True, 
+    "public_transport": ["platform", "station", "stop_position"], 
+    "amenity": ["restaurant", "cafe"]
 }
 
 def predict_price(latitude, longitude, date, property_type, bbox_size=bbox_size, neighbourhood_size=neighbourhood_size, osm_tags=osm_tags, date_range=1):

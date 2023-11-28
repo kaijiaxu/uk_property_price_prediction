@@ -111,6 +111,31 @@ def osm_plot(tags):
     mlai.write_figure(f'osm-{tag_names}.jpg', directory='./ml')     
 
 
+def osm_plot_specific_area(north, south, east, west, tags):
+    """
+    Plots the data from OSM for the whole of the UK to see the distribution
+    """
+    tag_names = '-'.join(tags.keys())
+    # Retrieve nodes and edges
+    graph = ox.graph_from_bbox(north, south, east, west)
+    nodes, edges = ox.graph_to_gdfs(graph)
+    
+    # Plot points
+    fig, ax = plt.subplots(figsize=plot.big_figsize)
+    # Plot street edges
+    edges.plot(ax=ax, linewidth=1, edgecolor="dimgray")
+    for osm_key in tags:
+        # Get OSM data
+        data = access.get_pois(north, south, east, west, {osm_key: tags[osm_key]})
+        data.plot(ax=ax, alpha=0.8, markersize = 1, label=f'{osm_key}')
+    ax.set_xlabel('longitude')
+    ax.set_ylabel('latitude')
+    fig.suptitle('OSM data for specific area') 
+    plt.tight_layout() 
+    plt.legend()
+    mlai.write_figure(f'osm-specific-{tag_names}.jpg', directory='./ml') 
+
+
 ### Prices Coordinates Data ###
 
 def price_coord_df(year):
@@ -130,13 +155,6 @@ def price_coord_df(year):
     fig.suptitle(f'Prices Coordinates data for {year}') 
     plt.tight_layout() 
     mlai.write_figure(f'Prices-coord-{year}.jpg', directory='./ml')
-
-def price_coord_by_year(year):
-    """
-    Plots the latitude by longitude graph to see the distribution of prices_coordinates_data
-    """
-    _ = interact(price_coord_df,
-            year=fixed(year))
 
 
 def plot_property_type_distribution(year):
