@@ -127,7 +127,7 @@ def osm_plot_specific_area(north, south, east, west, tags):
     for osm_key in tags:
         # Get OSM data
         data = access.get_pois(north, south, east, west, {osm_key: tags[osm_key]})
-        data.plot(ax=ax, alpha=0.8, markersize = 1, label=f'{osm_key}')
+        data.plot(ax=ax, alpha=0.7, markersize = 10, label=f'{osm_key}')
     ax.set_xlabel('longitude')
     ax.set_ylabel('latitude')
     fig.suptitle('OSM data for specific area') 
