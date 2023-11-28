@@ -180,7 +180,8 @@ osm_tags = {
     "shop": ["supermarket", "convenience"], 
     "office": True, 
     "public_transport": ["platform", "station", "stop_position"], 
-    "amenity": ["restaurant", "cafe"]
+    "amenity": ["restaurant", "cafe"],
+    "building": ["kindergarten", "school"]
 }
 
 def predict_price(latitude, longitude, date, property_type, bbox_size=bbox_size, neighbourhood_size=neighbourhood_size, osm_tags=osm_tags, date_range=1):
